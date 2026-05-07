@@ -1,0 +1,9 @@
+{
+  "samples": "data/processed/samples.jsonl",
+  "output": "results/audit.MODEL_SLUG.jsonl",
+  "model": "MODEL_ID_OR_LOCAL_PATH",
+  "device": "cuda",
+  "dtype": "float16",
+  "limit": null,
+  "trust_remote_code": false
+}

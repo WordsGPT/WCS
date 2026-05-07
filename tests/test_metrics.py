@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+import json
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from wcs.metrics import summarize_wcs, write_summary_csv
+
+
+def audit_row(
+    sample_id: str,
+    token_index: int,
+    rank: int,
+    cumulative_probability: float,
+    probability_ratio_to_top: float,
+) -> dict:
+    return {
+        "sample_id": sample_id,
+        "model": "fake-model",
+        "word": sample_id,
+        "word_rank": 12345,
+        "source_path": "fixture.txt",
+        "word_token_index": token_index,
+        "token_id": token_index + 10,
+        "token_text": "x",
+        "rank": rank,
+        "probability": 0.1,
+        "top_probability": 0.2,
+        "probability_ratio_to_top": probability_ratio_to_top,
+        "cumulative_probability": cumulative_probability,
+        "context_token_count": 256,
+        "prefix_char_count": 1000,
+        "word_token_count": 2,
+    }
+
+
+class MetricsTest(unittest.TestCase):
+    def test_summarize_wcs_requires_all_word_tokens_to_survive(self) -> None:
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            rows = [
+                audit_row("word-a", 0, rank=1, cumulative_probability=0.20, probability_ratio_to_top=0.9),
+                audit_row("word-a", 1, rank=2, cumulative_probability=0.40, probability_ratio_to_top=0.8),
+                audit_row("word-b", 0, rank=1, cumulative_probability=0.20, probability_ratio_to_top=0.9),
+                audit_row("word-b", 1, rank=5, cumulative_probability=0.96, probability_ratio_to_top=0.01),
+            ]
+            with audit_path.open("w", encoding="utf-8") as handle:
+                for row in rows:
+                    handle.write(json.dumps(row) + "\n")
+
+            summaries = summarize_wcs(
+                [audit_path],
+                top_k_values=[2, 5],
+                top_p_values=[0.50, 0.99],
+                min_p_values=[0.05, 0.95],
+            )
+            keyed = {(row.decoder, row.parameter): row for row in summaries}
+
+            self.assertEqual(keyed[("top_k", 2.0)].covered_words, 1)
+            self.assertEqual(keyed[("top_k", 5.0)].covered_words, 2)
+            self.assertEqual(keyed[("top_p", 0.5)].covered_words, 1)
+            self.assertEqual(keyed[("top_p", 0.99)].covered_words, 2)
+            self.assertEqual(keyed[("min_p", 0.05)].covered_words, 1)
+            self.assertEqual(keyed[("min_p", 0.95)].covered_words, 0)
+
+            summary_path = Path(directory) / "summary.csv"
+            write_summary_csv(summaries, summary_path)
+            self.assertIn("decoder", summary_path.read_text(encoding="utf-8"))
+
+
+if __name__ == "__main__":
+    unittest.main()

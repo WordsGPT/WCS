@@ -1,0 +1,10 @@
+{
+  "frequency": "data/raw/norvig_frequency.tsv",
+  "corpus": "data/raw/pg19/test",
+  "output": "data/processed/samples.jsonl",
+  "rank_min": 10000,
+  "rank_max": 40000,
+  "sample_size": 1000,
+  "context_tokens": 256,
+  "seed": 13
+}

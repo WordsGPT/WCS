@@ -1,0 +1,6 @@
+[project]
+name = "wcs"
+version = "0.1.0"
+description = "Word Coverage Score data preparation and audit tooling"
+requires-python = ">=3.11"
+dependencies = []
