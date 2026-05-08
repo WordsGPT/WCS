@@ -97,7 +97,8 @@ The summary CSV can be generated without plotting dependencies. Plot generation 
 For long unattended GPU runs, use the resumable suite runner. It runs one
 model at a time, writes each audit to a `.partial` file first, renames it only
 after validation, skips already completed outputs, retries failures, and
-rewrites the combined summary after every completed model.
+rewrites the combined context-level and word-level summaries after every
+completed model.
 
 From the repository root on the GPU server:
 
@@ -114,6 +115,19 @@ tail -f logs/model_suite.nohup.log
 
 Resume after a disconnect or server interruption by running the same `nohup`
 command again. Completed files in `results/audit.*.jsonl` are skipped.
+Existing Mistral smoke/full filenames from the notebook workflow are also
+recognized:
+
+- `results/audit.mistral7b.limit1000.jsonl`
+- `results/audit.mistral7b-instruct.full.jsonl`
+
+The runner writes:
+
+- `results/wcs_summary.model_suite.csv`: context-level coverage over 1,000
+  target-word occurrences.
+- `results/wcs_word_summary.model_suite.csv`: word-level coverage over 100
+  unique target words, including whether each word is covered in at least one
+  context.
 
 Run a subset by slug:
 

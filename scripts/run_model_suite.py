@@ -20,7 +20,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from wcs.metrics import summarize_wcs, write_summary_csv
+from wcs.metrics import (
+    summarize_wcs,
+    summarize_wcs_by_target_word,
+    write_summary_csv,
+    write_word_summary_csv,
+)
 
 
 @dataclass(frozen=True)
@@ -29,6 +34,7 @@ class ModelSpec:
     model_id: str
     family: str
     variant: str
+    aliases: tuple[str, ...] = ()
 
 
 DEFAULT_MODELS = [
@@ -39,12 +45,19 @@ DEFAULT_MODELS = [
         "llama",
         "instruct",
     ),
-    ModelSpec("mistral7b-v03-base", "mistralai/Mistral-7B-v0.3", "mistral", "base"),
+    ModelSpec(
+        "mistral7b-v03-base",
+        "mistralai/Mistral-7B-v0.3",
+        "mistral",
+        "base",
+        aliases=("audit.mistral7b.limit1000.jsonl",),
+    ),
     ModelSpec(
         "mistral7b-v03-instruct",
         "mistralai/Mistral-7B-Instruct-v0.3",
         "mistral",
         "instruct",
+        aliases=("audit.mistral7b-instruct.full.jsonl",),
     ),
     ModelSpec("qwen25-7b-base", "Qwen/Qwen2.5-7B", "qwen-small", "base"),
     ModelSpec(
@@ -109,10 +122,10 @@ def audit_is_complete(path: Path, expected_samples: int) -> bool:
     return len(sample_ids) == expected_samples
 
 
-def write_manifest(path: Path, completed: Iterable[Path], models: Iterable[ModelSpec]) -> None:
+def write_manifest(path: Path, completed: dict[str, Path], models: Iterable[ModelSpec]) -> None:
     rows = []
     for model in models:
-        output_path = next((p for p in completed if p.name == f"audit.{model.slug}.jsonl"), None)
+        output_path = completed.get(model.slug)
         rows.append(
             {
                 "slug": model.slug,
@@ -151,6 +164,14 @@ def run_one_model(
     if audit_is_complete(output_path, expected_samples):
         print(f"[skip] {model.slug}: complete output already exists at {output_path}", flush=True)
         return output_path
+    for alias in model.aliases:
+        alias_path = args.results_dir / alias
+        if audit_is_complete(alias_path, expected_samples):
+            print(
+                f"[skip] {model.slug}: using complete existing output at {alias_path}",
+                flush=True,
+            )
+            return alias_path
 
     args.results_dir.mkdir(parents=True, exist_ok=True)
     args.logs_dir.mkdir(parents=True, exist_ok=True)
@@ -212,12 +233,15 @@ def run_one_model(
     return None
 
 
-def write_summary(paths: list[Path], summary_path: Path) -> None:
+def write_summaries(paths: list[Path], summary_path: Path, word_summary_path: Path) -> None:
     if not paths:
         return
     rows = summarize_wcs(paths)
     write_summary_csv(rows, summary_path)
     print(f"[summary] wrote {summary_path}", flush=True)
+    word_rows = summarize_wcs_by_target_word(paths)
+    write_word_summary_csv(word_rows, word_summary_path)
+    print(f"[word-summary] wrote {word_summary_path}", flush=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -226,6 +250,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--results-dir", type=Path, default=ROOT / "results")
     parser.add_argument("--logs-dir", type=Path, default=ROOT / "logs/model_suite")
     parser.add_argument("--summary", type=Path, default=ROOT / "results/wcs_summary.model_suite.csv")
+    parser.add_argument(
+        "--word-summary",
+        type=Path,
+        default=ROOT / "results/wcs_word_summary.model_suite.csv",
+    )
     parser.add_argument("--manifest", type=Path, default=ROOT / "results/model_suite_manifest.json")
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--device", default="cuda")
@@ -247,6 +276,7 @@ def main() -> int:
     args.results_dir = args.results_dir.resolve()
     args.logs_dir = args.logs_dir.resolve()
     args.summary = args.summary.resolve()
+    args.word_summary = args.word_summary.resolve()
     args.manifest = args.manifest.resolve()
 
     models = select_models(args.models)
@@ -256,7 +286,7 @@ def main() -> int:
     env.setdefault("MPLBACKEND", "Agg")
 
     print(f"[start] {len(models)} models; expected samples per model: {expected_samples}", flush=True)
-    completed: list[Path] = []
+    completed: dict[str, Path] = {}
     failures: list[str] = []
 
     for model in models:
@@ -266,12 +296,12 @@ def main() -> int:
         if output_path is None:
             failures.append(model.slug)
             continue
-        completed.append(output_path)
+        completed[model.slug] = output_path
         write_manifest(args.manifest, completed, models)
-        write_summary(completed, args.summary)
+        write_summaries(list(completed.values()), args.summary, args.word_summary)
 
     write_manifest(args.manifest, completed, models)
-    write_summary(completed, args.summary)
+    write_summaries(list(completed.values()), args.summary, args.word_summary)
 
     if failures:
         print(f"[finished-with-failures] {', '.join(failures)}", flush=True)
