@@ -26,6 +26,21 @@ class WcsSummaryRow:
     audit_path: str
 
 
+@dataclass(frozen=True)
+class WcsWordSummaryRow:
+    model: str
+    decoder: str
+    parameter: float
+    word_any_wcs: float
+    word_all_wcs: float
+    covered_words_any: int
+    covered_words_all: int
+    total_words: int
+    covered_contexts: int
+    total_contexts: int
+    audit_path: str
+
+
 def parse_number_list(raw: str, number_type: type = float) -> list:
     values = []
     for part in raw.split(","):
@@ -50,6 +65,14 @@ def group_rows_by_word(rows: Iterable[dict]) -> dict[tuple[str, str, str], list[
     for row in rows:
         key = (row["model"], row["sample_id"], row["_audit_path"])
         grouped.setdefault(key, []).append(row)
+    return grouped
+
+
+def group_rows_by_target_word(rows: Iterable[dict]) -> dict[tuple[str, str, str], dict[str, list[dict]]]:
+    grouped: dict[tuple[str, str, str], dict[str, list[dict]]] = {}
+    for row in rows:
+        key = (row["model"], row["word"], row["_audit_path"])
+        grouped.setdefault(key, {}).setdefault(row["sample_id"], []).append(row)
     return grouped
 
 
@@ -122,6 +145,76 @@ def summarize_wcs(
     return summaries
 
 
+def summarize_wcs_by_target_word(
+    audit_paths: Iterable[Path],
+    top_k_values: Iterable[int] = DEFAULT_TOP_K,
+    top_p_values: Iterable[float] = DEFAULT_TOP_P,
+    min_p_values: Iterable[float] = DEFAULT_MIN_P,
+) -> list[WcsWordSummaryRow]:
+    grouped = group_rows_by_target_word(iter_audit_rows(audit_paths))
+    by_model_path: dict[tuple[str, str], list[list[list[dict]]]] = {}
+    for (model, _word, audit_path), sample_groups in grouped.items():
+        context_rows = [
+            sorted(rows, key=lambda row: int(row["word_token_index"]))
+            for _sample_id, rows in sorted(sample_groups.items())
+        ]
+        by_model_path.setdefault((model, audit_path), []).append(context_rows)
+
+    summaries: list[WcsWordSummaryRow] = []
+    for (model, audit_path), word_contexts in sorted(by_model_path.items()):
+        total_words = len(word_contexts)
+        total_contexts = sum(len(contexts) for contexts in word_contexts)
+
+        def append_summary(decoder: str, parameter: float, context_survival: list[list[bool]]) -> None:
+            covered_words_any = sum(1 for contexts in context_survival if any(contexts))
+            covered_words_all = sum(1 for contexts in context_survival if contexts and all(contexts))
+            covered_contexts = sum(1 for contexts in context_survival for survives in contexts if survives)
+            summaries.append(
+                WcsWordSummaryRow(
+                    model=model,
+                    decoder=decoder,
+                    parameter=float(parameter),
+                    word_any_wcs=covered_words_any / total_words if total_words else 0.0,
+                    word_all_wcs=covered_words_all / total_words if total_words else 0.0,
+                    covered_words_any=covered_words_any,
+                    covered_words_all=covered_words_all,
+                    total_words=total_words,
+                    covered_contexts=covered_contexts,
+                    total_contexts=total_contexts,
+                    audit_path=audit_path,
+                )
+            )
+
+        for k in top_k_values:
+            append_summary(
+                "top_k",
+                float(k),
+                [
+                    [word_survives_top_k(rows, int(k)) for rows in contexts]
+                    for contexts in word_contexts
+                ],
+            )
+        for p in top_p_values:
+            append_summary(
+                "top_p",
+                float(p),
+                [
+                    [word_survives_top_p(rows, float(p)) for rows in contexts]
+                    for contexts in word_contexts
+                ],
+            )
+        for min_p in min_p_values:
+            append_summary(
+                "min_p",
+                float(min_p),
+                [
+                    [word_survives_min_p(rows, float(min_p)) for rows in contexts]
+                    for contexts in word_contexts
+                ],
+            )
+    return summaries
+
+
 def write_summary_csv(rows: Iterable[WcsSummaryRow], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
@@ -131,6 +224,28 @@ def write_summary_csv(rows: Iterable[WcsSummaryRow], output_path: Path) -> None:
         "wcs",
         "covered_words",
         "total_words",
+        "audit_path",
+    ]
+    with output_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row.__dict__)
+
+
+def write_word_summary_csv(rows: Iterable[WcsWordSummaryRow], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "model",
+        "decoder",
+        "parameter",
+        "word_any_wcs",
+        "word_all_wcs",
+        "covered_words_any",
+        "covered_words_all",
+        "total_words",
+        "covered_contexts",
+        "total_contexts",
         "audit_path",
     ]
     with output_path.open("w", encoding="utf-8", newline="") as handle:

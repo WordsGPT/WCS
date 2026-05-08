@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from wcs.metrics import summarize_wcs, write_summary_csv
+from wcs.metrics import summarize_wcs, summarize_wcs_by_target_word, write_summary_csv
 
 
 def audit_row(
@@ -14,11 +14,12 @@ def audit_row(
     rank: int,
     cumulative_probability: float,
     probability_ratio_to_top: float,
+    word: str | None = None,
 ) -> dict:
     return {
         "sample_id": sample_id,
         "model": "fake-model",
-        "word": sample_id,
+        "word": word or sample_id,
         "word_rank": 12345,
         "source_path": "fixture.txt",
         "word_token_index": token_index,
@@ -67,6 +68,44 @@ class MetricsTest(unittest.TestCase):
             summary_path = Path(directory) / "summary.csv"
             write_summary_csv(summaries, summary_path)
             self.assertIn("decoder", summary_path.read_text(encoding="utf-8"))
+
+    def test_summarize_wcs_by_target_word_counts_any_surviving_context(self) -> None:
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            rows = [
+                audit_row("word-a-context-1", 0, rank=1, cumulative_probability=0.20, probability_ratio_to_top=0.9, word="word-a"),
+                audit_row("word-a-context-2", 0, rank=50, cumulative_probability=0.99, probability_ratio_to_top=0.001, word="word-a"),
+                audit_row("word-b-context-1", 0, rank=50, cumulative_probability=0.99, probability_ratio_to_top=0.001, word="word-b"),
+                audit_row("word-b-context-2", 0, rank=60, cumulative_probability=0.99, probability_ratio_to_top=0.001, word="word-b"),
+            ]
+            with audit_path.open("w", encoding="utf-8") as handle:
+                for row in rows:
+                    handle.write(json.dumps(row) + "\n")
+
+            summaries = summarize_wcs_by_target_word(
+                [audit_path],
+                top_k_values=[10],
+                top_p_values=[0.50],
+                min_p_values=[0.05],
+            )
+            keyed = {(row.decoder, row.parameter): row for row in summaries}
+
+            top_k = keyed[("top_k", 10.0)]
+            self.assertEqual(top_k.total_words, 2)
+            self.assertEqual(top_k.total_contexts, 4)
+            self.assertEqual(top_k.covered_words_any, 1)
+            self.assertEqual(top_k.covered_words_all, 0)
+            self.assertEqual(top_k.covered_contexts, 1)
+            self.assertEqual(top_k.word_any_wcs, 0.5)
+            self.assertEqual(top_k.word_all_wcs, 0.0)
+
+            top_p = keyed[("top_p", 0.5)]
+            self.assertEqual(top_p.covered_words_any, 1)
+            self.assertEqual(top_p.covered_contexts, 1)
+
+            min_p = keyed[("min_p", 0.05)]
+            self.assertEqual(min_p.covered_words_any, 1)
+            self.assertEqual(min_p.covered_contexts, 1)
 
 
 if __name__ == "__main__":
