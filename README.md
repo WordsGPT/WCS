@@ -91,3 +91,53 @@ python scripts/summarize_wcs.py \
 ```
 
 The summary CSV can be generated without plotting dependencies. Plot generation requires `matplotlib`.
+
+## Resumable Model Suite
+
+For long unattended GPU runs, use the resumable suite runner. It runs one
+model at a time, writes each audit to a `.partial` file first, renames it only
+after validation, skips already completed outputs, retries failures, and
+rewrites the combined summary after every completed model.
+
+From the repository root on the GPU server:
+
+```bash
+nohup .venv/bin/python -u scripts/run_model_suite.py \
+  > logs/model_suite.nohup.log 2>&1 &
+```
+
+Follow progress without keeping the notebook browser open:
+
+```bash
+tail -f logs/model_suite.nohup.log
+```
+
+Resume after a disconnect or server interruption by running the same `nohup`
+command again. Completed files in `results/audit.*.jsonl` are skipped.
+
+Run a subset by slug:
+
+```bash
+nohup .venv/bin/python -u scripts/run_model_suite.py \
+  --models mistral7b-v03-instruct,llama31-8b-base \
+  > logs/model_suite.nohup.log 2>&1 &
+```
+
+The default suite uses verified Hugging Face IDs where available:
+
+- `meta-llama/Llama-3.1-8B`
+- `meta-llama/Llama-3.1-8B-Instruct`
+- `mistralai/Mistral-7B-v0.3`
+- `mistralai/Mistral-7B-Instruct-v0.3`
+- `Qwen/Qwen2.5-7B`
+- `Qwen/Qwen2.5-7B-Instruct`
+- `Qwen/Qwen2.5-14B`
+- `Qwen/Qwen2.5-14B-Instruct`
+- `google/gemma-3-12b-pt`
+- `google/gemma-3-12b-it`
+- `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`
+
+The paper draft includes `Qwen3.5-9B` and `Gemma-4-E4B` placeholders. Those
+names are not resolved to stable Hugging Face IDs in the runner; update
+`DEFAULT_MODELS` in [scripts/run_model_suite.py](scripts/run_model_suite.py)
+if the final model IDs differ.
