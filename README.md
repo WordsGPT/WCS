@@ -143,15 +143,16 @@ The default suite uses verified Hugging Face IDs where available:
 - `meta-llama/Llama-3.1-8B-Instruct`
 - `mistralai/Mistral-7B-v0.3`
 - `mistralai/Mistral-7B-Instruct-v0.3`
-- `Qwen/Qwen2.5-7B`
-- `Qwen/Qwen2.5-7B-Instruct`
+- `Qwen/Qwen3.5-9B-Base`
+- `Qwen/Qwen3.5-9B`
 - `Qwen/Qwen2.5-14B`
 - `Qwen/Qwen2.5-14B-Instruct`
 - `google/gemma-3-12b-pt`
 - `google/gemma-3-12b-it`
+- `google/gemma-4-E4B`
+- `google/gemma-4-E4B-it`
 - `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`
 
-The paper draft includes `Qwen3.5-9B` and `Gemma-4-E4B` placeholders. Those
-names are not resolved to stable Hugging Face IDs in the runner; update
-`DEFAULT_MODELS` in [scripts/run_model_suite.py](scripts/run_model_suite.py)
-if the final model IDs differ.
+For the DeepSeek pair, the runner uses `Qwen/Qwen2.5-14B` as the base
+comparison for `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`, matching the
+distilled model's documented base family.

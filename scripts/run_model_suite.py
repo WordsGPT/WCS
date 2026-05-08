@@ -59,10 +59,10 @@ DEFAULT_MODELS = [
         "instruct",
         aliases=("audit.mistral7b-instruct.full.jsonl",),
     ),
-    ModelSpec("qwen25-7b-base", "Qwen/Qwen2.5-7B", "qwen-small", "base"),
+    ModelSpec("qwen35-9b-base", "Qwen/Qwen3.5-9B-Base", "qwen-small", "base"),
     ModelSpec(
-        "qwen25-7b-instruct",
-        "Qwen/Qwen2.5-7B-Instruct",
+        "qwen35-9b-instruct",
+        "Qwen/Qwen3.5-9B",
         "qwen-small",
         "instruct",
     ),
@@ -75,6 +75,8 @@ DEFAULT_MODELS = [
     ),
     ModelSpec("gemma3-12b-base", "google/gemma-3-12b-pt", "gemma3", "base"),
     ModelSpec("gemma3-12b-it", "google/gemma-3-12b-it", "gemma3", "instruct"),
+    ModelSpec("gemma4-e4b-base", "google/gemma-4-E4B", "gemma4", "base"),
+    ModelSpec("gemma4-e4b-it", "google/gemma-4-E4B-it", "gemma4", "instruct"),
     ModelSpec(
         "deepseek-qwen14b-distill",
         "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
