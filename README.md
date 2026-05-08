@@ -13,8 +13,9 @@ The current implementation covers Phase 1 and Phase 3:
 2. Randomly order words in the paper's middle-long-tail rank band.
 3. Search a local corpus for each selected word.
 4. Extract the preceding context window.
-5. Continue through the rank band until the requested number of usable contexts is reached.
-6. Write a stable `samples.jsonl` file for later forced-path model audits.
+5. Continue through the rank band until the requested number of usable words is reached.
+6. Keep the requested number of Gemini-checked contexts for each selected word.
+7. Write a stable `samples.jsonl` file for later forced-path model audits.
 
 See [docs/data_contracts.md](docs/data_contracts.md) for the file formats.
 
@@ -30,6 +31,7 @@ python scripts/build_samples.py \
   --rank-min 3 \
   --rank-max 8 \
   --sample-size 4 \
+  --contexts-per-word 10 \
   --context-tokens 16 \
   --seed 7 \
   --min-word-length 3 \
@@ -38,6 +40,10 @@ python scripts/build_samples.py \
 ```
 
 For PG-19, point `--corpus` at a directory containing `.txt` files from the test partition.
+
+`--sample-size` is the number of target words. `--contexts-per-word` is the number of accepted text contexts kept for each word. The builder first filters out words without enough raw corpus contexts, then runs the required Gemini coherence check.
+
+Use `--resume` to continue appending to an existing output file. Resume preserves complete word groups and continues sample IDs from the checkpoint.
 
 Use `--exclude-capitalized-matches` for the paper dataset to reduce proper names and place names such as capitalized mythological, personal, or geographic references.
 

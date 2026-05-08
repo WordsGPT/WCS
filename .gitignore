@@ -10,3 +10,5 @@ data/processed/*.jsonl
 !data/processed/samples.jsonl
 results/
 plots/
+
+.env

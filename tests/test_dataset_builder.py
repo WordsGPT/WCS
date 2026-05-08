@@ -4,6 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from wcs.dataset_builder import build_samples, load_frequency_entries, write_jsonl
 
@@ -20,16 +21,18 @@ class DatasetBuilderTest(unittest.TestCase):
         self.assertEqual(entries[2].count, 50000)
 
     def test_build_samples_finds_full_contexts(self) -> None:
-        samples, missing = build_samples(
-            frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
-            corpus_path=FIXTURES / "pg19_sample",
-            rank_min=3,
-            rank_max=8,
-            sample_size=4,
-            context_tokens=5,
-            seed=7,
-            min_word_length=3,
-        )
+        with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
+            samples, missing = build_samples(
+                frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                corpus_path=FIXTURES / "pg19_sample",
+                rank_min=3,
+                rank_max=8,
+                sample_size=4,
+                context_tokens=5,
+                seed=7,
+                min_word_length=3,
+                contexts_per_word=1,
+            )
 
         self.assertFalse(missing)
         self.assertEqual(len(samples), 4)
@@ -49,53 +52,98 @@ class DatasetBuilderTest(unittest.TestCase):
         self.assertIn("prefix", rows[0])
 
     def test_build_samples_can_exclude_capitalized_matches(self) -> None:
-        samples, missing = build_samples(
-            frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
-            corpus_path=FIXTURES / "pg19_sample",
-            rank_min=3,
-            rank_max=8,
-            sample_size=6,
-            context_tokens=5,
-            seed=7,
-            exclude_capitalized_matches=True,
-            min_word_length=3,
-        )
+        with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
+            samples, missing = build_samples(
+                frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                corpus_path=FIXTURES / "pg19_sample",
+                rank_min=3,
+                rank_max=8,
+                sample_size=6,
+                context_tokens=5,
+                seed=7,
+                exclude_capitalized_matches=True,
+                min_word_length=3,
+                contexts_per_word=1,
+            )
 
         self.assertFalse(missing)
         self.assertEqual(len(samples), 6)
         self.assertTrue(all(not sample.matched_text[:1].isupper() for sample in samples))
 
     def test_build_samples_can_filter_short_words(self) -> None:
-        samples, missing = build_samples(
-            frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
-            corpus_path=FIXTURES / "pg19_sample",
-            rank_min=3,
-            rank_max=8,
-            sample_size=6,
-            context_tokens=5,
-            seed=7,
-            min_word_length=8,
-        )
+        with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
+            samples, missing = build_samples(
+                frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                corpus_path=FIXTURES / "pg19_sample",
+                rank_min=3,
+                rank_max=8,
+                sample_size=6,
+                context_tokens=5,
+                seed=7,
+                min_word_length=8,
+                contexts_per_word=1,
+            )
 
         self.assertFalse(missing)
         self.assertTrue(all(len(sample.word) >= 8 for sample in samples))
 
     def test_build_samples_can_filter_by_dictionary(self) -> None:
-        samples, missing = build_samples(
-            frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
-            corpus_path=FIXTURES / "pg19_sample",
-            rank_min=3,
-            rank_max=11,
-            sample_size=6,
-            context_tokens=5,
-            seed=7,
-            min_word_length=3,
-            dictionary_path=FIXTURES / "frequency" / "dictionary_sample.txt",
-        )
+        with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
+            samples, missing = build_samples(
+                frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                corpus_path=FIXTURES / "pg19_sample",
+                rank_min=3,
+                rank_max=11,
+                sample_size=6,
+                context_tokens=5,
+                seed=7,
+                min_word_length=3,
+                dictionary_path=FIXTURES / "frequency" / "dictionary_sample.txt",
+                contexts_per_word=1,
+            )
 
         self.assertFalse(missing)
         self.assertTrue(samples)
         self.assertNotIn("artifact", {sample.word for sample in samples})
+
+    def test_build_samples_can_resume_complete_word_groups(self) -> None:
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "samples.jsonl"
+            with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
+                first_samples, _ = build_samples(
+                    frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                    corpus_path=FIXTURES / "pg19_sample",
+                    rank_min=3,
+                    rank_max=8,
+                    sample_size=1,
+                    context_tokens=5,
+                    seed=7,
+                    min_word_length=3,
+                    contexts_per_word=1,
+                    checkpoint_path=output,
+                )
+
+                resumed_samples, _ = build_samples(
+                    frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                    corpus_path=FIXTURES / "pg19_sample",
+                    rank_min=3,
+                    rank_max=8,
+                    sample_size=2,
+                    context_tokens=5,
+                    seed=7,
+                    min_word_length=3,
+                    contexts_per_word=1,
+                    checkpoint_path=output,
+                    resume=True,
+                )
+
+        self.assertEqual(len(first_samples), 1)
+        self.assertEqual(len(resumed_samples), 2)
+        self.assertEqual([sample.id for sample in resumed_samples], [
+            "sample-000001",
+            "sample-000002",
+        ])
+        self.assertEqual(len({sample.word for sample in resumed_samples}), 2)
 
 
 if __name__ == "__main__":

@@ -9,14 +9,89 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import random
 import re
-from dataclasses import asdict, dataclass
+import socket
+import time
+import urllib.error
+import urllib.request
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
 
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z'-]*")
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+_ENV_LOADED = False
+
+
+def load_env_file(path: Path = Path(".env")) -> None:
+    global _ENV_LOADED
+    if _ENV_LOADED or not path.exists():
+        return
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if "=" not in stripped or stripped.startswith("#"):
+                continue
+            key, val = stripped.split("=", 1)
+            os.environ.setdefault(key.strip(), val.strip())
+    _ENV_LOADED = True
+
+
+def is_text_coherent(
+    text: str,
+    target_word: str = "",
+    *,
+    model: str = DEFAULT_GEMINI_MODEL,
+    timeout_seconds: float = 60.0,
+) -> bool:
+    load_env_file()
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is required for the coherence check.")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    excerpt = f"{text} {target_word}".strip()
+    prompt = (
+        "Is the following excerpt coherent English prose from a book, "
+        "even if it starts or ends mid-sentence? Answer only 'yes' or 'no'."
+        f"\n\nExcerpt:\n{excerpt}"
+    )
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.0}
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(data).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                try:
+                    text_response = result["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
+                    return "yes" in text_response
+                except (KeyError, IndexError):
+                    return False
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            if e.code == 429 or 500 <= e.code < 600:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Gemini API error {e.code}: {body}") from e
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as e:
+            if attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Error calling Gemini: {e}") from e
+    raise RuntimeError(f"Gemini API failed after {max_attempts} attempts.")
 
 
 @dataclass(frozen=True)
@@ -41,6 +116,7 @@ class CorpusMatch:
 class IndexedOccurrence:
     word: str
     prefix: str
+    raw_excerpt: str
     matched_text: str
     source_path: str
     match_start_char: int
@@ -229,10 +305,13 @@ def index_corpus_occurrences(
                 continue
             prefix_tokens = token_matches[token_index - context_tokens : token_index]
             prefix = " ".join(token.group(0) for token in prefix_tokens)
+            raw_start = prefix_tokens[0].start()
+            raw_excerpt = text[raw_start : match.end()].strip()
             occurrences[normalized].append(
                 IndexedOccurrence(
                     word=normalized,
                     prefix=prefix,
+                    raw_excerpt=raw_excerpt,
                     matched_text=match.group(0),
                     source_path=str(path),
                     match_start_char=match.start(),
@@ -272,6 +351,30 @@ def count_tokens(text: str) -> int:
     return len(WORD_RE.findall(text))
 
 
+def load_existing_samples(path: Path, contexts_per_word: int) -> list[Sample]:
+    if not path.exists():
+        return []
+
+    rows: list[Sample] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            if not raw_line.strip():
+                continue
+            data = json.loads(raw_line)
+            rows.append(Sample(**data))
+
+    by_word: dict[str, list[Sample]] = {}
+    for sample in rows:
+        by_word.setdefault(sample.word, []).append(sample)
+
+    complete_words = {
+        word
+        for word, samples in by_word.items()
+        if len(samples) == contexts_per_word
+    }
+    return [sample for sample in rows if sample.word in complete_words]
+
+
 def build_samples(
     frequency_path: Path,
     corpus_path: Path,
@@ -283,6 +386,11 @@ def build_samples(
     exclude_capitalized_matches: bool = False,
     min_word_length: int = 1,
     dictionary_path: Path | None = None,
+    contexts_per_word: int = 10,
+    coherence_model: str = DEFAULT_GEMINI_MODEL,
+    checkpoint_path: Path | None = None,
+    progress_interval: int = 0,
+    resume: bool = False,
 ) -> tuple[list[Sample], list[FrequencyEntry]]:
     entries = load_frequency_entries(frequency_path)
     allowed_words = load_dictionary(dictionary_path) if dictionary_path else None
@@ -303,47 +411,129 @@ def build_samples(
 
     samples: list[Sample] = []
     missing: list[FrequencyEntry] = []
+    if contexts_per_word < 1:
+        raise ValueError("contexts_per_word must be at least 1")
+    if checkpoint_path:
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        if resume:
+            samples = load_existing_samples(checkpoint_path, contexts_per_word)
+            with checkpoint_path.open("w", encoding="utf-8") as handle:
+                for sample in samples:
+                    handle.write(json.dumps(asdict(sample), ensure_ascii=False) + "\n")
+        else:
+            checkpoint_path.write_text("", encoding="utf-8")
+    completed_words = {sample.word for sample in samples}
     occurrence_index, corpus_char_count = index_corpus_occurrences(
         words={entry.word for entry in selected},
         corpus_files=corpus_files,
         context_tokens=context_tokens,
         exclude_capitalized_matches=exclude_capitalized_matches,
     )
+    raw_context_missing = [
+        entry
+        for entry in selected
+        if len(occurrence_index.get(entry.word, [])) < contexts_per_word
+    ]
+    missing.extend(raw_context_missing)
+    selected = [
+        entry
+        for entry in selected
+        if len(occurrence_index.get(entry.word, [])) >= contexts_per_word
+    ]
+    selected = [entry for entry in selected if entry.word not in completed_words]
+    if progress_interval > 0:
+        print(
+            f"Raw context filter kept {len(selected)} words "
+            f"(skipped {len(raw_context_missing)} with fewer than {contexts_per_word} contexts)",
+            flush=True,
+        )
 
+    words_sampled = len(completed_words)
+    if progress_interval > 0 and completed_words:
+        print(
+            f"Resuming from {len(completed_words)} words / {len(samples)} samples",
+            flush=True,
+        )
     for entry in selected:
-        if sample_size > 0 and len(samples) >= sample_size:
+        if sample_size > 0 and words_sampled >= sample_size:
             break
         search_start = rng.randrange(corpus_char_count) if corpus_char_count > 0 else 0
-        occurrence = choose_occurrence_after_offset(occurrence_index[entry.word], search_start)
-        if occurrence is None:
+        
+        occurrences = occurrence_index.get(entry.word, [])
+        if not occurrences:
             missing.append(entry)
             continue
-        samples.append(
-            Sample(
-                id=f"sample-{len(samples) + 1:06d}",
-                word=entry.word,
-                rank=entry.rank,
-                count=entry.count,
-                prefix=occurrence.prefix,
-                matched_text=occurrence.matched_text,
-                source_path=occurrence.source_path,
-                match_start_char=occurrence.match_start_char,
-                match_end_char=occurrence.match_end_char,
-                context_token_count=occurrence.context_token_count,
-                search_start_char=search_start,
-                metadata={
-                    "rank_min": rank_min,
-                    "rank_max": rank_max,
-                    "sample_size": sample_size,
-                    "context_tokens": context_tokens,
-                    "seed": seed,
-                    "selection": "filled_from_rank_band",
-                    "exclude_capitalized_matches": int(exclude_capitalized_matches),
-                    "min_word_length": min_word_length,
-                    "dictionary": str(dictionary_path) if dictionary_path else "",
-                },
+            
+        sorted_occurrences = sorted(occurrences, key=lambda item: item.global_start_char)
+        start_idx = 0
+        for i, occ in enumerate(sorted_occurrences):
+            if occ.global_start_char >= search_start:
+                start_idx = i
+                break
+                
+        ordered_occurrences = sorted_occurrences[start_idx:] + sorted_occurrences[:start_idx]
+        
+        word_samples: list[Sample] = []
+        for occurrence in ordered_occurrences:
+            if len(word_samples) >= contexts_per_word:
+                break
+
+            if not is_text_coherent(
+                occurrence.raw_excerpt,
+                model=coherence_model,
+            ):
+                continue
+
+            word_samples.append(
+                Sample(
+                    id="",
+                    word=entry.word,
+                    rank=entry.rank,
+                    count=entry.count,
+                    prefix=occurrence.prefix,
+                    matched_text=occurrence.matched_text,
+                    source_path=occurrence.source_path,
+                    match_start_char=occurrence.match_start_char,
+                    match_end_char=occurrence.match_end_char,
+                    context_token_count=occurrence.context_token_count,
+                    search_start_char=search_start,
+                    metadata={
+                        "rank_min": rank_min,
+                        "rank_max": rank_max,
+                        "sample_size": sample_size,
+                        "context_tokens": context_tokens,
+                        "seed": seed,
+                        "selection": "filled_from_rank_band",
+                        "exclude_capitalized_matches": int(exclude_capitalized_matches),
+                        "min_word_length": min_word_length,
+                        "dictionary": str(dictionary_path) if dictionary_path else "",
+                        "contexts_per_word": contexts_per_word,
+                        "coherence_model": coherence_model,
+                    },
+                )
             )
-        )
+
+        if len(word_samples) < contexts_per_word:
+            missing.append(entry)
+            continue
+
+        committed_samples: list[Sample] = []
+        for sample in word_samples:
+            committed = replace(sample, id=f"sample-{len(samples) + 1:06d}")
+            samples.append(committed)
+            committed_samples.append(committed)
+        if checkpoint_path:
+            with checkpoint_path.open("a", encoding="utf-8") as handle:
+                for sample in committed_samples:
+                    handle.write(json.dumps(asdict(sample), ensure_ascii=False) + "\n")
+        words_sampled += 1
+        if progress_interval > 0 and words_sampled % progress_interval == 0:
+            print(
+                f"Accepted {words_sampled} words / {len(samples)} samples "
+                f"(skipped {len(missing)} words)",
+                flush=True,
+            )
+
     return samples, missing
 
 
@@ -361,7 +551,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=Path("data/processed/samples.jsonl"))
     parser.add_argument("--rank-min", type=int, default=10_000)
     parser.add_argument("--rank-max", type=int, default=40_000)
-    parser.add_argument("--sample-size", type=int, default=1_000)
+    parser.add_argument("--sample-size", type=int, default=100)
     parser.add_argument("--context-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument(
@@ -381,6 +571,28 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip corpus matches whose surface form starts with a capital letter.",
     )
+    parser.add_argument(
+        "--contexts-per-word",
+        type=int,
+        default=10,
+        help="Number of different contexts to pick for each selected word.",
+    )
+    parser.add_argument(
+        "--coherence-model",
+        default=DEFAULT_GEMINI_MODEL,
+        help="Gemini model to use for the required coherence check.",
+    )
+    parser.add_argument(
+        "--progress-interval",
+        type=int,
+        default=1,
+        help="Print progress after this many accepted words. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append to an existing output file, preserving complete word groups.",
+    )
     return parser.parse_args()
 
 
@@ -397,6 +609,11 @@ def main() -> None:
         exclude_capitalized_matches=args.exclude_capitalized_matches,
         min_word_length=args.min_word_length,
         dictionary_path=args.dictionary,
+        contexts_per_word=args.contexts_per_word,
+        coherence_model=args.coherence_model,
+        checkpoint_path=args.output,
+        progress_interval=args.progress_interval,
+        resume=args.resume,
     )
     write_jsonl(samples, args.output)
     print(f"Wrote {len(samples)} samples to {args.output}")
