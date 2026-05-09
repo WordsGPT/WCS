@@ -151,8 +151,14 @@ The default suite uses verified Hugging Face IDs where available:
 - `google/gemma-3-12b-it`
 - `google/gemma-4-E4B`
 - `google/gemma-4-E4B-it`
+- `google/gemma-2-9b`
+- `google/gemma-2-9b-it`
+- `deepseek-ai/DeepSeek-V2-Lite`
 - `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`
 
 For the DeepSeek pair, the runner uses `Qwen/Qwen2.5-14B` as the base
 comparison for `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`, matching the
 distilled model's documented base family.
+
+`deepseek-ai/DeepSeek-V2-Lite` requires `--trust-remote-code` when run through
+Transformers.

@@ -77,6 +77,9 @@ DEFAULT_MODELS = [
     ModelSpec("gemma3-12b-it", "google/gemma-3-12b-it", "gemma3", "instruct"),
     ModelSpec("gemma4-e4b-base", "google/gemma-4-E4B", "gemma4", "base"),
     ModelSpec("gemma4-e4b-it", "google/gemma-4-E4B-it", "gemma4", "instruct"),
+    ModelSpec("gemma2-9b-base", "google/gemma-2-9b", "gemma2", "base"),
+    ModelSpec("gemma2-9b-it", "google/gemma-2-9b-it", "gemma2", "instruct"),
+    ModelSpec("deepseek-v2-lite", "deepseek-ai/DeepSeek-V2-Lite", "deepseek-v2", "base"),
     ModelSpec(
         "deepseek-qwen14b-distill",
         "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
