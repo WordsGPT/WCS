@@ -195,6 +195,8 @@ def run_one_model(
         args.device,
         "--dtype",
         args.dtype,
+        "--temperature",
+        str(args.temperature),
     ]
     if args.limit is not None:
         command.extend(["--limit", str(args.limit)])
@@ -264,6 +266,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16", choices=["auto", "float16", "bfloat16", "float32"])
+    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--models", default=None, help="Comma-separated model slugs or Hugging Face IDs.")
     parser.add_argument("--retries", type=int, default=1)

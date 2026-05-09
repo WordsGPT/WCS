@@ -59,6 +59,18 @@ class AuditTest(unittest.TestCase):
         self.assertGreater(ratio, 0)
         self.assertGreater(cumulative, probability)
 
+    def test_rank_probability_applies_temperature_scaling(self) -> None:
+        logits = torch.tensor([3.0, 2.0, 0.0])
+        _rank, cold_probability, cold_top, _ratio, _cumulative = rank_probability_from_logits(
+            logits, token_id=1, temperature=0.5
+        )
+        _rank, warm_probability, warm_top, _ratio, _cumulative = rank_probability_from_logits(
+            logits, token_id=1, temperature=1.5
+        )
+
+        self.assertGreater(warm_probability, cold_probability)
+        self.assertGreater(cold_top, warm_top)
+
     def test_audit_sample_walks_target_tokens(self) -> None:
         sample = {
             "id": "sample-000001",
@@ -75,6 +87,7 @@ class AuditTest(unittest.TestCase):
             sample=sample,
             model_name="fake-model",
             device="cpu",
+            temperature=0.7,
         )
 
         self.assertEqual(len(rows), 2)
@@ -84,6 +97,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(rows[1].token_id, 4)
         self.assertEqual(rows[1].rank, 1)
         self.assertEqual(rows[0].word_token_count, 2)
+        self.assertEqual(rows[0].temperature, 0.7)
 
 
 if __name__ == "__main__":

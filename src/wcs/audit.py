@@ -28,6 +28,7 @@ class AuditTokenRow:
     top_probability: float
     probability_ratio_to_top: float
     cumulative_probability: float
+    temperature: float
     context_token_count: int
     prefix_char_count: int
     word_token_count: int
@@ -73,7 +74,11 @@ def encode_prefix(tokenizer: Any, prefix: str) -> list[int]:
     return list(token_ids)
 
 
-def rank_probability_from_logits(logits: Any, token_id: int) -> tuple[int, float, float, float, float]:
+def rank_probability_from_logits(
+    logits: Any,
+    token_id: int,
+    temperature: float = 1.0,
+) -> tuple[int, float, float, float, float]:
     """Return rank/probability diagnostics for one token id.
 
     Returns:
@@ -82,7 +87,10 @@ def rank_probability_from_logits(logits: Any, token_id: int) -> tuple[int, float
 
     import torch
 
-    probs = torch.softmax(logits.float(), dim=-1)
+    if temperature <= 0:
+        raise ValueError("temperature must be greater than 0")
+
+    probs = torch.softmax(logits.float() / temperature, dim=-1)
     target_prob = probs[token_id]
     top_prob = torch.max(probs)
     rank = int(torch.count_nonzero(probs > target_prob).item() + 1)
@@ -104,6 +112,7 @@ def audit_sample(
     sample: dict[str, Any],
     model_name: str,
     device: str | None = None,
+    temperature: float = 1.0,
 ) -> list[AuditTokenRow]:
     import torch
 
@@ -120,7 +129,7 @@ def audit_sample(
             outputs = model(input_ids=input_ids)
             logits = outputs.logits[0, -1, :]
         rank, probability, top_probability, ratio, cumulative_probability = (
-            rank_probability_from_logits(logits, token_id)
+            rank_probability_from_logits(logits, token_id, temperature=temperature)
         )
         rows.append(
             AuditTokenRow(
@@ -137,6 +146,7 @@ def audit_sample(
                 top_probability=top_probability,
                 probability_ratio_to_top=ratio,
                 cumulative_probability=cumulative_probability,
+                temperature=float(temperature),
                 context_token_count=int(sample["context_token_count"]),
                 prefix_char_count=len(sample["prefix"]),
                 word_token_count=len(word_ids),
@@ -153,9 +163,17 @@ def audit_samples(
     samples: Iterable[dict[str, Any]],
     model_name: str,
     device: str | None = None,
+    temperature: float = 1.0,
 ) -> Iterator[AuditTokenRow]:
     for sample in samples:
-        yield from audit_sample(model, tokenizer, sample, model_name=model_name, device=device)
+        yield from audit_sample(
+            model,
+            tokenizer,
+            sample,
+            model_name=model_name,
+            device=device,
+            temperature=temperature,
+        )
 
 
 def write_audit_jsonl(rows: Iterable[AuditTokenRow], output_path: Path) -> None:
@@ -201,6 +219,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda", help="Example: cuda, cuda:0, cpu")
     parser.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
     parser.add_argument("--limit", type=int, default=None, help="Optional sample limit for smoke tests.")
+    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--trust-remote-code", action="store_true")
     return parser.parse_args()
 
@@ -220,6 +239,7 @@ def main() -> None:
         samples=samples,
         model_name=args.model,
         device=args.device,
+        temperature=args.temperature,
     )
     write_audit_jsonl(rows, args.output)
     print(f"Wrote audit rows to {args.output}")
