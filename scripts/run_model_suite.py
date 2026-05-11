@@ -26,6 +26,7 @@ from wcs.metrics import (
     write_summary_csv,
     write_word_summary_csv,
 )
+from wcs.audit import parse_temperature_list, temperature_slug
 
 
 @dataclass(frozen=True)
@@ -240,6 +241,104 @@ def run_one_model(
     return None
 
 
+def run_one_model_temperatures(
+    model: ModelSpec,
+    args: argparse.Namespace,
+    expected_samples: int,
+    env: dict[str, str],
+    temperatures: list[float],
+) -> dict[float, Path] | None:
+    args.results_dir.mkdir(parents=True, exist_ok=True)
+    args.logs_dir.mkdir(parents=True, exist_ok=True)
+
+    output_paths = {
+        temperature: args.results_dir / temperature_slug(temperature) / f"audit.{model.slug}.jsonl"
+        for temperature in temperatures
+    }
+    partial_paths = {
+        temperature: args.results_dir / temperature_slug(temperature) / f"audit.{model.slug}.jsonl.partial"
+        for temperature in temperatures
+    }
+    for temperature, output_path in output_paths.items():
+        if not audit_is_complete(output_path, expected_samples):
+            break
+    else:
+        print(f"[skip] {model.slug}: complete outputs already exist for all temperatures", flush=True)
+        return output_paths
+
+    log_path = args.logs_dir / f"audit.{model.slug}.multi_temperature.log"
+    output_template = str(args.results_dir / "{temperature_slug}" / f"audit.{model.slug}.jsonl.partial")
+    command = [
+        str(args.python),
+        "-u",
+        str(ROOT / "scripts" / "run_audit.py"),
+        "--samples",
+        str(args.samples),
+        "--output",
+        str(partial_paths[temperatures[0]]),
+        "--output-template",
+        output_template,
+        "--model",
+        model.model_id,
+        "--device",
+        args.device,
+        "--dtype",
+        args.dtype,
+        "--temperatures",
+        ",".join(f"{temperature:g}" for temperature in temperatures),
+    ]
+    if args.limit is not None:
+        command.extend(["--limit", str(args.limit)])
+    if args.trust_remote_code:
+        command.append("--trust-remote-code")
+
+    quoted = " ".join(shlex.quote(part) for part in command)
+    for attempt in range(1, args.retries + 2):
+        for partial_path in partial_paths.values():
+            if partial_path.exists():
+                partial_path.unlink()
+
+        started = time.strftime("%Y-%m-%d %H:%M:%S")
+        print(
+            f"[run] {model.slug} multi-temperature attempt {attempt}: {model.model_id}",
+            flush=True,
+        )
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(f"\n===== {started} {model.slug} multi-temperature attempt {attempt} =====\n")
+            log.write(quoted + "\n")
+            log.flush()
+            result = subprocess.run(
+                command,
+                cwd=ROOT,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        complete = result.returncode == 0 and all(
+            audit_is_complete(path, expected_samples) for path in partial_paths.values()
+        )
+        if complete:
+            for temperature, partial_path in partial_paths.items():
+                output_path = output_paths[temperature]
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                partial_path.replace(output_path)
+            print(f"[done] {model.slug}: wrote {len(temperatures)} temperature outputs", flush=True)
+            return output_paths
+
+        print(
+            f"[fail] {model.slug}: return code {result.returncode}; see {log_path}",
+            flush=True,
+        )
+        if STOP_REQUESTED:
+            return None
+        if attempt <= args.retries:
+            time.sleep(args.retry_sleep_seconds)
+
+    return None
+
+
 def write_summaries(paths: list[Path], summary_path: Path, word_summary_path: Path) -> None:
     if not paths:
         return
@@ -249,6 +348,19 @@ def write_summaries(paths: list[Path], summary_path: Path, word_summary_path: Pa
     word_rows = summarize_wcs_by_target_word(paths)
     write_word_summary_csv(word_rows, word_summary_path)
     print(f"[word-summary] wrote {word_summary_path}", flush=True)
+
+
+def write_temperature_summaries(completed: dict[float, dict[str, Path]], args: argparse.Namespace) -> None:
+    for temperature, by_slug in completed.items():
+        paths = list(by_slug.values())
+        if not paths:
+            continue
+        temp_dir = args.results_dir / temperature_slug(temperature)
+        write_summaries(
+            paths,
+            temp_dir / "wcs_summary.csv",
+            temp_dir / "wcs_word_summary.csv",
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -267,6 +379,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16", choices=["auto", "float16", "bfloat16", "float32"])
     parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures for one-pass multi-temperature audits.")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--models", default=None, help="Comma-separated model slugs or Hugging Face IDs.")
     parser.add_argument("--retries", type=int, default=1)
@@ -294,6 +407,43 @@ def main() -> int:
     env.setdefault("MPLBACKEND", "Agg")
 
     print(f"[start] {len(models)} models; expected samples per model: {expected_samples}", flush=True)
+    if args.temperatures:
+        temperatures = parse_temperature_list(args.temperatures)
+        print(
+            "[start] multi-temperature mode: "
+            + ", ".join(f"T={temperature:g}" for temperature in temperatures),
+            flush=True,
+        )
+        completed_by_temperature: dict[float, dict[str, Path]] = {
+            temperature: {} for temperature in temperatures
+        }
+        failures: list[str] = []
+        for model in models:
+            if STOP_REQUESTED:
+                break
+            output_paths = run_one_model_temperatures(
+                model,
+                args,
+                expected_samples,
+                env,
+                temperatures,
+            )
+            if output_paths is None:
+                failures.append(model.slug)
+                continue
+            for temperature, path in output_paths.items():
+                completed_by_temperature[temperature][model.slug] = path
+            write_temperature_summaries(completed_by_temperature, args)
+        write_temperature_summaries(completed_by_temperature, args)
+        if failures:
+            print(f"[finished-with-failures] {', '.join(failures)}", flush=True)
+            return 1
+        if STOP_REQUESTED:
+            print("[stopped] resume by running the same command again.", flush=True)
+            return 130
+        print("[finished] all selected models completed.", flush=True)
+        return 0
+
     completed: dict[str, Path] = {}
     failures: list[str] = []
 

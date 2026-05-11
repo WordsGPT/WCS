@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from wcs.audit import audit_sample, rank_probability_from_logits
+from wcs.audit import audit_sample, audit_sample_temperatures, rank_probability_from_logits
 
 
 class FakeOutput:
@@ -98,6 +98,32 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(rows[1].rank, 1)
         self.assertEqual(rows[0].word_token_count, 2)
         self.assertEqual(rows[0].temperature, 0.7)
+
+    def test_audit_sample_temperatures_reuses_path_for_multiple_temperatures(self) -> None:
+        sample = {
+            "id": "sample-000001",
+            "word": "target",
+            "rank": 12345,
+            "source_path": "fixture.txt",
+            "prefix": "alpha beta gamma",
+            "context_token_count": 3,
+        }
+
+        rows_by_temperature = audit_sample_temperatures(
+            model=FakeModel(),
+            tokenizer=FakeTokenizer(),
+            sample=sample,
+            model_name="fake-model",
+            temperatures=[1.0, 0.7],
+            device="cpu",
+        )
+
+        self.assertEqual(set(rows_by_temperature), {1.0, 0.7})
+        self.assertEqual(len(rows_by_temperature[1.0]), 2)
+        self.assertEqual(len(rows_by_temperature[0.7]), 2)
+        self.assertEqual(rows_by_temperature[1.0][0].temperature, 1.0)
+        self.assertEqual(rows_by_temperature[0.7][0].temperature, 0.7)
+        self.assertEqual(rows_by_temperature[1.0][0].token_id, rows_by_temperature[0.7][0].token_id)
 
 
 if __name__ == "__main__":
