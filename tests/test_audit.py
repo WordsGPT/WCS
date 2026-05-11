@@ -4,7 +4,12 @@ import unittest
 
 import torch
 
-from wcs.audit import audit_sample, audit_sample_temperatures, rank_probability_from_logits
+from wcs.audit import (
+    audit_sample,
+    audit_sample_temperatures,
+    patch_transformers_remote_code_compatibility,
+    rank_probability_from_logits,
+)
 
 
 class FakeOutput:
@@ -124,6 +129,30 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(rows_by_temperature[1.0][0].temperature, 1.0)
         self.assertEqual(rows_by_temperature[0.7][0].temperature, 0.7)
         self.assertEqual(rows_by_temperature[1.0][0].token_id, rows_by_temperature[0.7][0].token_id)
+
+    def test_remote_code_compatibility_patch_adds_deprecated_helpers(self) -> None:
+        import transformers.pytorch_utils as pytorch_utils
+        import transformers.utils.import_utils as import_utils
+
+        original_fx = getattr(import_utils, "is_torch_fx_available", None)
+        original_torch_check = getattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13", None)
+        if hasattr(import_utils, "is_torch_fx_available"):
+            delattr(import_utils, "is_torch_fx_available")
+        if hasattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13"):
+            delattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13")
+        try:
+            patch_transformers_remote_code_compatibility()
+            self.assertTrue(import_utils.is_torch_fx_available())
+            self.assertTrue(pytorch_utils.is_torch_greater_or_equal_than_1_13)
+        finally:
+            if original_fx is not None:
+                import_utils.is_torch_fx_available = original_fx
+            elif hasattr(import_utils, "is_torch_fx_available"):
+                delattr(import_utils, "is_torch_fx_available")
+            if original_torch_check is not None:
+                pytorch_utils.is_torch_greater_or_equal_than_1_13 = original_torch_check
+            elif hasattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13"):
+                delattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13")
 
 
 if __name__ == "__main__":

@@ -299,6 +299,9 @@ def load_hf_model_and_tokenizer(
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    if trust_remote_code:
+        patch_transformers_remote_code_compatibility()
+
     torch_dtype: Any = dtype
     if dtype == "float16":
         torch_dtype = torch.float16
@@ -316,6 +319,19 @@ def load_hf_model_and_tokenizer(
     model.to(device)
     model.eval()
     return model, tokenizer
+
+
+def patch_transformers_remote_code_compatibility() -> None:
+    """Restore small deprecated helpers referenced by older Hub remote code."""
+
+    import transformers.pytorch_utils as pytorch_utils
+    import transformers.utils.import_utils as import_utils
+
+    if not hasattr(import_utils, "is_torch_fx_available"):
+        import_utils.is_torch_fx_available = lambda: True
+
+    if not hasattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13"):
+        pytorch_utils.is_torch_greater_or_equal_than_1_13 = True
 
 
 def parse_args() -> argparse.Namespace:
