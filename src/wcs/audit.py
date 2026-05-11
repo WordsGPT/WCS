@@ -126,7 +126,7 @@ def audit_sample(
     for token_index, token_id in enumerate(word_ids):
         input_ids = torch.tensor([current_ids], dtype=torch.long, device=model_device)
         with torch.inference_mode():
-            outputs = model(input_ids=input_ids)
+            outputs = model(input_ids=input_ids, use_cache=False)
             logits = outputs.logits[0, -1, :]
         rank, probability, top_probability, ratio, cumulative_probability = (
             rank_probability_from_logits(logits, token_id, temperature=temperature)
@@ -180,7 +180,7 @@ def audit_sample_temperatures(
     for token_index, token_id in enumerate(word_ids):
         input_ids = torch.tensor([current_ids], dtype=torch.long, device=model_device)
         with torch.inference_mode():
-            outputs = model(input_ids=input_ids)
+            outputs = model(input_ids=input_ids, use_cache=False)
             logits = outputs.logits[0, -1, :]
         for temperature in temperature_values:
             rank, probability, top_probability, ratio, cumulative_probability = (
@@ -332,6 +332,27 @@ def patch_transformers_remote_code_compatibility() -> None:
 
     if not hasattr(pytorch_utils, "is_torch_greater_or_equal_than_1_13"):
         pytorch_utils.is_torch_greater_or_equal_than_1_13 = True
+
+    try:
+        from transformers.cache_utils import DynamicCache
+    except Exception:
+        return
+
+    if not hasattr(DynamicCache, "from_legacy_cache"):
+        def from_legacy_cache(cls: type[Any], past_key_values: Any = None, *args: Any, **kwargs: Any) -> Any:
+            if past_key_values is None or isinstance(past_key_values, cls):
+                return past_key_values if isinstance(past_key_values, cls) else cls()
+            cache = cls()
+            update = getattr(cache, "update", None)
+            if update is None:
+                return past_key_values
+            for layer_idx, layer_past in enumerate(past_key_values):
+                if not layer_past:
+                    continue
+                update(layer_past[0], layer_past[1], layer_idx)
+            return cache
+
+        DynamicCache.from_legacy_cache = classmethod(from_legacy_cache)
 
 
 def parse_args() -> argparse.Namespace:
