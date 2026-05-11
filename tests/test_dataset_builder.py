@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from wcs.dataset_builder import build_samples, load_frequency_entries, write_jsonl
+from wcs.dataset_builder import build_samples, index_corpus_occurrences, load_frequency_entries, write_jsonl
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -50,6 +50,29 @@ class DatasetBuilderTest(unittest.TestCase):
 
         self.assertTrue(rows[0]["id"].startswith("sample-"))
         self.assertIn("prefix", rows[0])
+
+    def test_index_corpus_occurrences_preserves_prefix_punctuation(self) -> None:
+        with TemporaryDirectory() as directory:
+            corpus_path = Path(directory) / "book.txt"
+            corpus_path.write_text(
+                'Alpha, beta; "gamma" delta epsilon target arrives.',
+                encoding="utf-8",
+            )
+
+            occurrences, _ = index_corpus_occurrences(
+                words={"target"},
+                corpus_files=[corpus_path],
+                context_tokens=5,
+            )
+
+        self.assertEqual(len(occurrences["target"]), 1)
+        occurrence = occurrences["target"][0]
+        self.assertEqual(
+            occurrence.prefix,
+            'Alpha, beta; "gamma" delta epsilon',
+        )
+        self.assertEqual(occurrence.context_token_count, 5)
+        self.assertIn('"gamma"', occurrence.raw_excerpt)
 
     def test_build_samples_can_exclude_capitalized_matches(self) -> None:
         with patch("wcs.dataset_builder.is_text_coherent", return_value=True):

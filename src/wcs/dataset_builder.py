@@ -304,8 +304,8 @@ def index_corpus_occurrences(
             if exclude_capitalized_matches and match.group(0)[:1].isupper():
                 continue
             prefix_tokens = token_matches[token_index - context_tokens : token_index]
-            prefix = " ".join(token.group(0) for token in prefix_tokens)
             raw_start = prefix_tokens[0].start()
+            prefix = text[raw_start : match.start()].strip()
             raw_excerpt = text[raw_start : match.end()].strip()
             occurrences[normalized].append(
                 IndexedOccurrence(
@@ -344,7 +344,7 @@ def prefix_before(text: str, char_offset: int, context_tokens: int) -> str:
         tokens = tokens[-context_tokens:]
     if not tokens:
         return ""
-    return " ".join(token.group(0) for token in tokens)
+    return prefix_text[tokens[0].start() :].strip()
 
 
 def count_tokens(text: str) -> int:
