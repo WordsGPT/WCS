@@ -17,6 +17,7 @@ DEFAULT_MIN_P = (0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10)
 
 @dataclass(frozen=True)
 class WcsSummaryRow:
+    temperature: float
     model: str
     decoder: str
     parameter: float
@@ -28,6 +29,7 @@ class WcsSummaryRow:
 
 @dataclass(frozen=True)
 class WcsWordSummaryRow:
+    temperature: float
     model: str
     decoder: str
     parameter: float
@@ -60,18 +62,18 @@ def iter_audit_rows(paths: Iterable[Path]) -> Iterator[dict]:
                     yield row
 
 
-def group_rows_by_word(rows: Iterable[dict]) -> dict[tuple[str, str, str], list[dict]]:
-    grouped: dict[tuple[str, str, str], list[dict]] = {}
+def group_rows_by_word(rows: Iterable[dict]) -> dict[tuple[str, float, str, str], list[dict]]:
+    grouped: dict[tuple[str, float, str, str], list[dict]] = {}
     for row in rows:
-        key = (row["model"], row["sample_id"], row["_audit_path"])
+        key = (row["model"], float(row.get("temperature", 1.0)), row["sample_id"], row["_audit_path"])
         grouped.setdefault(key, []).append(row)
     return grouped
 
 
-def group_rows_by_target_word(rows: Iterable[dict]) -> dict[tuple[str, str, str], dict[str, list[dict]]]:
-    grouped: dict[tuple[str, str, str], dict[str, list[dict]]] = {}
+def group_rows_by_target_word(rows: Iterable[dict]) -> dict[tuple[str, float, str, str], dict[str, list[dict]]]:
+    grouped: dict[tuple[str, float, str, str], dict[str, list[dict]]] = {}
     for row in rows:
-        key = (row["model"], row["word"], row["_audit_path"])
+        key = (row["model"], float(row.get("temperature", 1.0)), row["word"], row["_audit_path"])
         grouped.setdefault(key, {}).setdefault(row["sample_id"], []).append(row)
     return grouped
 
@@ -95,18 +97,19 @@ def summarize_wcs(
     min_p_values: Iterable[float] = DEFAULT_MIN_P,
 ) -> list[WcsSummaryRow]:
     grouped = group_rows_by_word(iter_audit_rows(audit_paths))
-    by_model_path: dict[tuple[str, str], list[list[dict]]] = {}
-    for (model, _sample_id, audit_path), rows in grouped.items():
+    by_model_path: dict[tuple[str, float, str], list[list[dict]]] = {}
+    for (model, temperature, _sample_id, audit_path), rows in grouped.items():
         rows = sorted(rows, key=lambda row: int(row["word_token_index"]))
-        by_model_path.setdefault((model, audit_path), []).append(rows)
+        by_model_path.setdefault((model, temperature, audit_path), []).append(rows)
 
     summaries: list[WcsSummaryRow] = []
-    for (model, audit_path), word_rows in sorted(by_model_path.items()):
+    for (model, temperature, audit_path), word_rows in sorted(by_model_path.items()):
         total_words = len(word_rows)
         for k in top_k_values:
             covered = sum(1 for rows in word_rows if word_survives_top_k(rows, int(k)))
             summaries.append(
                 WcsSummaryRow(
+                    temperature=temperature,
                     model=model,
                     decoder="top_k",
                     parameter=float(k),
@@ -120,6 +123,7 @@ def summarize_wcs(
             covered = sum(1 for rows in word_rows if word_survives_top_p(rows, float(p)))
             summaries.append(
                 WcsSummaryRow(
+                    temperature=temperature,
                     model=model,
                     decoder="top_p",
                     parameter=float(p),
@@ -133,6 +137,7 @@ def summarize_wcs(
             covered = sum(1 for rows in word_rows if word_survives_min_p(rows, float(min_p)))
             summaries.append(
                 WcsSummaryRow(
+                    temperature=temperature,
                     model=model,
                     decoder="min_p",
                     parameter=float(min_p),
@@ -152,16 +157,16 @@ def summarize_wcs_by_target_word(
     min_p_values: Iterable[float] = DEFAULT_MIN_P,
 ) -> list[WcsWordSummaryRow]:
     grouped = group_rows_by_target_word(iter_audit_rows(audit_paths))
-    by_model_path: dict[tuple[str, str], list[list[list[dict]]]] = {}
-    for (model, _word, audit_path), sample_groups in grouped.items():
+    by_model_path: dict[tuple[str, float, str], list[list[list[dict]]]] = {}
+    for (model, temperature, _word, audit_path), sample_groups in grouped.items():
         context_rows = [
             sorted(rows, key=lambda row: int(row["word_token_index"]))
             for _sample_id, rows in sorted(sample_groups.items())
         ]
-        by_model_path.setdefault((model, audit_path), []).append(context_rows)
+        by_model_path.setdefault((model, temperature, audit_path), []).append(context_rows)
 
     summaries: list[WcsWordSummaryRow] = []
-    for (model, audit_path), word_contexts in sorted(by_model_path.items()):
+    for (model, temperature, audit_path), word_contexts in sorted(by_model_path.items()):
         total_words = len(word_contexts)
         total_contexts = sum(len(contexts) for contexts in word_contexts)
 
@@ -171,6 +176,7 @@ def summarize_wcs_by_target_word(
             covered_contexts = sum(1 for contexts in context_survival for survives in contexts if survives)
             summaries.append(
                 WcsWordSummaryRow(
+                    temperature=temperature,
                     model=model,
                     decoder=decoder,
                     parameter=float(parameter),

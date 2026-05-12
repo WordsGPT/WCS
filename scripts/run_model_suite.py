@@ -351,16 +351,16 @@ def write_summaries(paths: list[Path], summary_path: Path, word_summary_path: Pa
 
 
 def write_temperature_summaries(completed: dict[float, dict[str, Path]], args: argparse.Namespace) -> None:
+    all_paths = []
     for temperature, by_slug in completed.items():
-        paths = list(by_slug.values())
-        if not paths:
-            continue
-        temp_dir = args.results_dir / temperature_slug(temperature)
-        write_summaries(
-            paths,
-            temp_dir / "wcs_summary.csv",
-            temp_dir / "wcs_word_summary.csv",
-        )
+        all_paths.extend(by_slug.values())
+    if not all_paths:
+        return
+    write_summaries(
+        all_paths,
+        args.summary,
+        args.word_summary,
+    )
 
 
 def parse_args() -> argparse.Namespace:
