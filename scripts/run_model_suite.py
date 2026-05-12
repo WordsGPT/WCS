@@ -393,6 +393,19 @@ def main() -> int:
     signal.signal(signal.SIGTERM, request_stop)
 
     args = parse_args()
+    
+    # If the summary arguments are exactly their defaults, override them to live inside results_dir
+    default_summary = ROOT / "results/wcs_summary.model_suite.csv"
+    default_word_summary = ROOT / "results/wcs_word_summary.model_suite.csv"
+    default_manifest = ROOT / "results/model_suite_manifest.json"
+    
+    if args.summary == default_summary:
+        args.summary = args.results_dir / "wcs_summary.csv"
+    if args.word_summary == default_word_summary:
+        args.word_summary = args.results_dir / "wcs_word_summary.csv"
+    if args.manifest == default_manifest:
+        args.manifest = args.results_dir / "manifest.json"
+
     args.samples = args.samples.resolve()
     args.results_dir = args.results_dir.resolve()
     args.logs_dir = args.logs_dir.resolve()
