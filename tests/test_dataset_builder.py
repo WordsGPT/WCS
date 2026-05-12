@@ -6,7 +6,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from wcs.dataset_builder import build_samples, index_corpus_occurrences, load_frequency_entries, write_jsonl
+from wcs.dataset_builder import (
+    build_samples,
+    index_corpus_occurrences,
+    load_frequency_entries,
+    normalize_target_word,
+    write_jsonl,
+)
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -73,6 +79,27 @@ class DatasetBuilderTest(unittest.TestCase):
         )
         self.assertEqual(occurrence.context_token_count, 5)
         self.assertIn('"gamma"', occurrence.raw_excerpt)
+
+    def test_unicode_words_are_normalized_and_indexed(self) -> None:
+        self.assertEqual(normalize_target_word("después"), "después")
+        self.assertEqual(normalize_target_word("doña"), "doña")
+
+        with TemporaryDirectory() as directory:
+            corpus_path = Path(directory) / "book.txt"
+            corpus_path.write_text(
+                "uno dos tres cuatro cinco Después llega doña Jacinta.",
+                encoding="utf-8",
+            )
+
+            occurrences, _ = index_corpus_occurrences(
+                words={"después", "doña"},
+                corpus_files=[corpus_path],
+                context_tokens=5,
+            )
+
+        self.assertEqual(len(occurrences["después"]), 1)
+        self.assertEqual(occurrences["después"][0].matched_text, "Después")
+        self.assertEqual(len(occurrences["doña"]), 1)
 
     def test_build_samples_can_exclude_capitalized_matches(self) -> None:
         with patch("wcs.dataset_builder.is_text_coherent", return_value=True):

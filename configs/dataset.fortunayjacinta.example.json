@@ -1,0 +1,13 @@
+{
+  "frequency": "data/raw/spanish_frequency.tsv",
+  "corpus": "FortunayJacinta.txt",
+  "output": "data/processed/samples.fortunayjacinta.100x5.jsonl",
+  "rank_min": 1000,
+  "rank_max": 12000,
+  "sample_size": 100,
+  "contexts_per_word": 5,
+  "context_tokens": 256,
+  "seed": 13,
+  "min_word_length": 4,
+  "language": "Spanish"
+}

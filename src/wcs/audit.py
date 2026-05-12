@@ -74,6 +74,15 @@ def encode_prefix(tokenizer: Any, prefix: str) -> list[int]:
     return list(token_ids)
 
 
+def model_forward_no_cache(model: Any, input_ids: Any) -> Any:
+    try:
+        return model(input_ids=input_ids, use_cache=False)
+    except TypeError as error:
+        if "use_cache" not in str(error):
+            raise
+        return model(input_ids=input_ids)
+
+
 def rank_probability_from_logits(
     logits: Any,
     token_id: int,
@@ -126,7 +135,7 @@ def audit_sample(
     for token_index, token_id in enumerate(word_ids):
         input_ids = torch.tensor([current_ids], dtype=torch.long, device=model_device)
         with torch.inference_mode():
-            outputs = model(input_ids=input_ids, use_cache=False)
+            outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
         rank, probability, top_probability, ratio, cumulative_probability = (
             rank_probability_from_logits(logits, token_id, temperature=temperature)
@@ -180,7 +189,7 @@ def audit_sample_temperatures(
     for token_index, token_id in enumerate(word_ids):
         input_ids = torch.tensor([current_ids], dtype=torch.long, device=model_device)
         with torch.inference_mode():
-            outputs = model(input_ids=input_ids, use_cache=False)
+            outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
         for temperature in temperature_values:
             rank, probability, top_probability, ratio, cumulative_probability = (

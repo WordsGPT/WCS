@@ -24,6 +24,15 @@ The Moby-Dick dataset is:
 - 500 samples total
 - same 256 context-token prefix length
 
+The Fortunata y Jacinta Spanish dataset should mirror the Moby-Dick shape:
+
+- `data/processed/samples.fortunayjacinta.100x5.jsonl`
+- built from root `FortunayJacinta.txt`
+- 100 target words
+- 5 contexts per word
+- 256 context-token prefix length
+- Spanish coherence prompt via `--language Spanish`
+
 Important: `context_token_count: 256` is the dataset builder's word/context count,
 not the evaluated model tokenizer's subword count.
 
@@ -50,6 +59,54 @@ python scripts/build_samples.py \
 
 This requires `GEMINI_API_KEY` for the coherence check.
 
+Build singer-level lyric frequency lists:
+
+```bash
+python scripts/build_word_frequency.py \
+  lyrics \
+  --output-dir data/processed/wordlists/lyrics \
+  --combined-name all_lyrics \
+  --min-word-length 3
+```
+
+Build the Spanish frequency list from Fortunata y Jacinta:
+
+```bash
+python scripts/build_word_frequency.py \
+  FortunayJacinta.txt \
+  --group-name fortunayjacinta \
+  --output-dir data/processed/wordlists \
+  --min-word-length 4 \
+  --strip-gutenberg
+```
+
+Build the external Spanish frequency list, matching the English Norvig-list
+setup more closely:
+
+```bash
+python scripts/download_leipzig_frequency.py \
+  --corpus spa_news_2023_1M \
+  --output data/raw/spanish_frequency.tsv
+```
+
+Build Fortunata y Jacinta samples:
+
+```bash
+python scripts/build_samples.py \
+  --frequency data/raw/spanish_frequency.tsv \
+  --corpus FortunayJacinta.txt \
+  --output data/processed/samples.fortunayjacinta.100x5.jsonl \
+  --rank-min 1000 \
+  --rank-max 12000 \
+  --sample-size 100 \
+  --contexts-per-word 5 \
+  --context-tokens 256 \
+  --seed 13 \
+  --min-word-length 4 \
+  --language Spanish \
+  --progress-interval 1
+```
+
 Run model suite:
 
 ```bash
@@ -61,6 +118,19 @@ nohup .venv/bin/python -u scripts/run_model_suite.py \
   --logs-dir logs/mobydick_100x5_multi_t \
   --trust-remote-code \
   > logs/mobydick_100x5_multi_t.nohup.log 2>&1 &
+```
+
+Fortunata y Jacinta with the same six models/temperatures:
+
+```bash
+nohup .venv/bin/python -u scripts/run_model_suite.py \
+  --samples data/processed/samples.fortunayjacinta.100x5.jsonl \
+  --models llama31-8b-base,llama31-8b-instruct,mistral7b-v03-base,mistral7b-v03-instruct,gemma3-12b-base,gemma3-12b-it \
+  --temperatures 1.0,0.7,1.5 \
+  --results-dir results/fortunayjacinta_100x5_multi_t \
+  --logs-dir logs/fortunayjacinta_100x5_multi_t \
+  --trust-remote-code \
+  > logs/fortunayjacinta_100x5_multi_t.nohup.log 2>&1 &
 ```
 
 Monitor:

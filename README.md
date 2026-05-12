@@ -51,6 +51,42 @@ Use `--min-word-length 3` or higher to remove short frequency-list artifacts suc
 
 Use `--dictionary /usr/share/dict/linux.words` to keep only targets found in the local English word list.
 
+Use `--language Spanish` when building Spanish corpora so the Gemini coherence
+check asks for coherent Spanish prose. The tokenizer and frequency-list parser
+accept accented Unicode words.
+
+## Build Word Frequency Lists
+
+Create ranked TSV frequency lists from local text, CSV, JSON, or lyric trees:
+
+```bash
+python scripts/build_word_frequency.py \
+  lyrics \
+  --output-dir data/processed/wordlists/lyrics \
+  --combined-name all_lyrics \
+  --min-word-length 3
+```
+
+For the Spanish Fortunata y Jacinta source:
+
+```bash
+python scripts/build_word_frequency.py \
+  FortunayJacinta.txt \
+  --group-name fortunayjacinta \
+  --output-dir data/processed/wordlists \
+  --min-word-length 4 \
+  --strip-gutenberg
+```
+
+For an external Spanish list comparable to the English Norvig list, download
+and convert the Leipzig Corpora Collection Spanish News 2023 word list:
+
+```bash
+python scripts/download_leipzig_frequency.py \
+  --corpus spa_news_2023_1M \
+  --output data/raw/spanish_frequency.tsv
+```
+
 ## Notes
 
 The context window is stored as whitespace-delimited text for corpus preparation. The later model-audit phase should re-tokenize the `prefix` and `word` with the evaluated model's tokenizer before running the forced-path audit.

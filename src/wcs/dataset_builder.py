@@ -21,8 +21,12 @@ from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
 
-WORD_RE = re.compile(r"[A-Za-z][A-Za-z'-]*")
+WORD_RE = re.compile(r"[^\W\d_](?:[^\W\d_]|['’-])*", flags=re.UNICODE)
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+LANGUAGE_NAMES = {
+    "en": "English",
+    "es": "Spanish",
+}
 _ENV_LOADED = False
 
 
@@ -45,6 +49,7 @@ def is_text_coherent(
     target_word: str = "",
     *,
     model: str = DEFAULT_GEMINI_MODEL,
+    language: str = "English",
     timeout_seconds: float = 60.0,
 ) -> bool:
     load_env_file()
@@ -56,7 +61,7 @@ def is_text_coherent(
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     excerpt = f"{text} {target_word}".strip()
     prompt = (
-        "Is the following excerpt coherent English prose from a book, "
+        f"Is the following excerpt coherent {language} prose from a book, "
         "even if it starts or ends mid-sentence? Answer only 'yes' or 'no'."
         f"\n\nExcerpt:\n{excerpt}"
     )
@@ -205,8 +210,16 @@ def parse_frequency_line(line: str, fallback_rank: int) -> FrequencyEntry | None
 
 def normalize_target_word(word: str) -> str:
     word = word.strip().lower()
+    word = word.strip("'’-")
     match = WORD_RE.fullmatch(word)
     return match.group(0) if match else ""
+
+
+def normalize_language(language: str) -> str:
+    cleaned = language.strip()
+    if not cleaned:
+        return "English"
+    return LANGUAGE_NAMES.get(cleaned.lower(), cleaned)
 
 
 def select_rank_band(
@@ -388,6 +401,7 @@ def build_samples(
     dictionary_path: Path | None = None,
     contexts_per_word: int = 10,
     coherence_model: str = DEFAULT_GEMINI_MODEL,
+    language: str = "English",
     checkpoint_path: Path | None = None,
     progress_interval: int = 0,
     resume: bool = False,
@@ -457,6 +471,10 @@ def build_samples(
     for entry in selected:
         if sample_size > 0 and words_sampled >= sample_size:
             break
+        
+        if progress_interval > 0:
+            print(".", end="", flush=True)
+            
         search_start = rng.randrange(corpus_char_count) if corpus_char_count > 0 else 0
         
         occurrences = occurrence_index.get(entry.word, [])
@@ -481,6 +499,7 @@ def build_samples(
             if not is_text_coherent(
                 occurrence.raw_excerpt,
                 model=coherence_model,
+                language=normalize_language(language),
             ):
                 continue
 
@@ -509,6 +528,7 @@ def build_samples(
                         "dictionary": str(dictionary_path) if dictionary_path else "",
                         "contexts_per_word": contexts_per_word,
                         "coherence_model": coherence_model,
+                        "language": normalize_language(language),
                     },
                 )
             )
@@ -583,6 +603,11 @@ def parse_args() -> argparse.Namespace:
         help="Gemini model to use for the required coherence check.",
     )
     parser.add_argument(
+        "--language",
+        default="English",
+        help="Language name or code for the coherence prompt, for example English or Spanish.",
+    )
+    parser.add_argument(
         "--progress-interval",
         type=int,
         default=1,
@@ -611,6 +636,7 @@ def main() -> None:
         dictionary_path=args.dictionary,
         contexts_per_word=args.contexts_per_word,
         coherence_model=args.coherence_model,
+        language=args.language,
         checkpoint_path=args.output,
         progress_interval=args.progress_interval,
         resume=args.resume,
