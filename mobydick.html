@@ -81,7 +81,7 @@
     .control-group { margin-bottom: 18px; }
     .segmented {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
       gap: 4px;
       padding: 4px;
       background: var(--soft);
@@ -335,13 +335,26 @@
 <body>
   <header>
     <div>
-      <h1>WCS Moby-Dick Comparison</h1>
-      <p class="subhead">Interactive view from <code>mobydick.csv</code>.</p>
+      <h1>WCS Comparison</h1>
+      <p class="subhead" id="headerSubhead">Interactive view of model performance.</p>
     </div>
-    <a href="temperature.html">Temperature comparison</a>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <a href="index.html">Main Suite</a>
+      <a href="temperature.html">Temperature comparison</a>
+    </div>
   </header>
   <main>
     <aside>
+      <div class="control-group">
+        <p class="control-title">Dataset</p>
+        <div class="segmented" id="datasetTabs">
+          <button type="button" data-dataset="mobydick.csv" class="active">Moby-Dick</button>
+          <button type="button" data-dataset="western_lands.csv">Western Lands</button>
+          <button type="button" data-dataset="FortunayJavinta.csv">Fortunata</button>
+          <button type="button" data-dataset="all">All</button>
+        </div>
+      </div>
+
       <div class="control-group">
         <p class="control-title">Chart Mode</p>
         <div class="segmented" id="modeTabs">
@@ -421,7 +434,8 @@
       temperature: null,
       metric: "word_any_wcs",
       enabled: new Set(),
-      colorMode: "normal"
+      colorMode: "normal",
+      dataset: "mobydick.csv"
     };
 
     const colors = {
@@ -542,9 +556,19 @@
 
     async function loadData() {
       try {
-        const response = await fetch("mobydick.csv", { cache: "no-store" });
-        if (!response.ok) throw new Error("CSV fetch failed");
-        initialize(parseCsv(await response.text()));
+        const datasets = state.dataset === "all"
+          ? ["mobydick.csv", "western_lands.csv", "FortunayJavinta.csv"]
+          : [state.dataset];
+        state.rows = [];
+        for (const ds of datasets) {
+          const response = await fetch(ds, { cache: "no-store" });
+          if (!response.ok) throw new Error("CSV fetch failed");
+          const text = await response.text();
+          const rows = parseCsv(text);
+          rows.forEach(r => r.dataset = ds);
+          state.rows.push(...rows);
+        }
+        initialize(state.rows);
       } catch (error) {
         document.getElementById("loader").hidden = false;
       }
@@ -552,10 +576,16 @@
 
     function initialize(rows) {
       state.rows = rows;
-      state.models = Array.from(new Set(rows.map(row => row.model))).sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b));
+      const allModels = Array.from(new Set(rows.map(row => row.model))).sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b));
+      state.models = allModels;
+      
       state.temperatures = Array.from(new Set(rows.map(row => row.temperature))).sort((a, b) => a - b);
-      state.temperature = state.temperatures.includes(1) ? 1 : state.temperatures[0];
-      state.enabled = new Set(state.models);
+      state.temperature = state.temperatures.includes(state.temperature) ? state.temperature : (state.temperatures.includes(1) ? 1 : state.temperatures[0]);
+      
+      if (state.enabled.size === 0) {
+        state.enabled = new Set(state.models);
+      }
+      
       buildControls();
       updateParameters();
       updateTemperatures();
@@ -641,7 +671,8 @@
 
     function updateParameters() {
       const select = document.getElementById("parameterSelect");
-      const values = Array.from(new Set(state.rows.filter(row => row.decoder === state.decoder).map(row => row.parameter))).sort((a, b) => a - b);
+      const filteredRows = state.rows.filter(row => row.decoder === state.decoder);
+      const values = Array.from(new Set(filteredRows.map(row => row.parameter))).sort((a, b) => a - b);
       const preferred = state.decoder === "top_p" ? 0.95 : state.decoder === "top_k" ? 20 : 0.05;
       state.parameter = values.includes(state.parameter) ? state.parameter : (values.includes(preferred) ? preferred : values[0]);
       select.innerHTML = "";
@@ -672,6 +703,14 @@
       document.getElementById("parameterControl").hidden = !isTemperatureSweep;
       document.getElementById("temperatureControl").hidden = isTemperatureSweep;
     }
+
+    document.getElementById("datasetTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-dataset]");
+      if (!button) return;
+      state.dataset = button.dataset.dataset;
+      document.querySelectorAll("#datasetTabs button").forEach(item => item.classList.toggle("active", item === button));
+      loadData();
+    });
 
     document.getElementById("modeTabs").addEventListener("click", event => {
       const button = event.target.closest("button[data-mode]");
@@ -763,12 +802,14 @@
         if (state.mode === "temperature") return row.parameter === state.parameter;
         return row.temperature === state.temperature;
       });
-      const byModel = new Map();
+      
+      const bySeries = new Map();
       rows.forEach(row => {
-        if (!byModel.has(row.model)) byModel.set(row.model, []);
-        byModel.get(row.model).push(row);
+        const key = state.dataset === "all" ? `${row.model}@@@${row.dataset}` : row.model;
+        if (!bySeries.has(key)) bySeries.set(key, []);
+        bySeries.get(key).push(row);
       });
-      byModel.forEach(values => values.sort((a, b) => xValue(a) - xValue(b)));
+      bySeries.forEach(values => values.sort((a, b) => xValue(a) - xValue(b)));
 
       const xValues = state.mode === "temperature" ? state.temperatures : parameterValues();
       const xMin = Math.min(...xValues);
@@ -777,7 +818,7 @@
       const y = value => margin.top + (1 - value) * innerHeight;
 
       drawGrid(svg, width, height, margin, innerWidth, innerHeight, x, y, xValues);
-      drawSeries(svg, byModel, x, y);
+      drawSeries(svg, bySeries, x, y);
 
       document.getElementById("chartTitle").textContent = state.mode === "temperature"
         ? `${metricLabels[state.metric]} by temperature`
@@ -785,7 +826,10 @@
       document.getElementById("chartSubtitle").textContent = state.mode === "temperature"
         ? `${decoderLabels[state.decoder]} = ${formatParameter(state.parameter, state.decoder)}`
         : `T=${formatTemperature(state.temperature)}`;
-      document.getElementById("chartMeta").textContent = `${byModel.size} visible models`;
+      document.getElementById("chartMeta").textContent = `${bySeries.size} series visible`;
+      document.getElementById("headerSubhead").textContent = state.dataset === "all" 
+        ? "Comparing Moby-Dick, Western Lands, and Fortunata y Jacinta" 
+        : `Interactive view from ${state.dataset}`;
     }
 
     function drawGrid(svg, width, height, margin, innerWidth, innerHeight, x, y, xValues) {
@@ -804,19 +848,29 @@
       yLabel.setAttribute("transform", `rotate(-90 18 ${margin.top + innerHeight / 2})`);
     }
 
-    function drawSeries(svg, byModel, x, y) {
-      byModel.forEach((values, model) => {
+    function drawSeries(svg, bySeries, x, y) {
+      bySeries.forEach((values, key) => {
+        const [model, dataset] = key.split("@@@");
+        const isWL = dataset === "western_lands.csv";
+        const isFJ = dataset === "FortunayJavinta.csv";
         const path = values.map((row, index) => `${index ? "L" : "M"}${x(xValue(row)).toFixed(2)},${y(row[state.metric]).toFixed(2)}`).join(" ");
         const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
         pathEl.setAttribute("d", path);
         pathEl.setAttribute("class", `series ${variantClass(model)}`);
         pathEl.setAttribute("stroke", colorFor(model));
+        if (isWL) {
+           pathEl.setAttribute("stroke-dasharray", variantClass(model) === "base" ? "2 3" : "8 3 2 3");
+           pathEl.setAttribute("stroke-width", "1.8");
+        } else if (isFJ) {
+           pathEl.setAttribute("stroke-dasharray", variantClass(model) === "base" ? "5 5" : "10 5 5 5");
+           pathEl.setAttribute("stroke-width", "1.8");
+        }
         svg.append(pathEl);
         values.forEach(row => {
           const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
           circle.setAttribute("cx", x(xValue(row)));
           circle.setAttribute("cy", y(row[state.metric]));
-          circle.setAttribute("r", variantClass(model) === "base" ? 4 : 4.8);
+          circle.setAttribute("r", (isWL || isFJ) ? (variantClass(model) === "base" ? 3 : 3.8) : (variantClass(model) === "base" ? 4 : 4.8));
           circle.setAttribute("class", "point");
           circle.setAttribute("fill", colorFor(model));
           circle.addEventListener("mousemove", event => showTooltip(event, row));
@@ -830,6 +884,7 @@
       const tooltip = document.getElementById("tooltip");
       tooltip.innerHTML = `
         <strong>${displayNames[row.model] || row.model}</strong>
+        Dataset: ${row.dataset === "mobydick.csv" ? "Moby-Dick" : (row.dataset === "western_lands.csv" ? "Western Lands" : "Fortunata y Jacinta")}<br>
         T=${formatTemperature(row.temperature)}<br>
         ${decoderLabels[row.decoder]}=${formatParameter(row.parameter, row.decoder)}<br>
         ${metricLabels[state.metric]}: ${(row[state.metric] * 100).toFixed(1)}%<br>
@@ -899,6 +954,6 @@
 
     window.addEventListener("resize", render);
     loadData();
-  </script>
+</script>
 </body>
 </html>
