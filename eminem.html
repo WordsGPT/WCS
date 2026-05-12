@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WCS Eminem Comparison</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #fff;
+      --ink: #18212f;
+      --muted: #5c6878;
+      --line: #d9dee7;
+      --soft: #eef2f6;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      padding: 24px 28px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .subhead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    main {
+      padding: 20px 28px 32px;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 20px;
+    }
+    aside, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    aside {
+      padding: 16px;
+      align-self: start;
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+    section {
+      padding: 16px;
+      min-width: 0;
+    }
+    .control-title {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 750;
+    }
+    .control-group { margin-bottom: 18px; }
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      background: var(--soft);
+      border-radius: 8px;
+    }
+    button, select {
+      font: inherit;
+    }
+    .segmented button, .metric-select button, .bulk-actions button {
+      border: 0;
+      background: transparent;
+      border-radius: 6px;
+      padding: 8px 6px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .segmented button.active, .metric-select button.active {
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+      font-weight: 650;
+    }
+    .metric-select {
+      display: grid;
+      gap: 6px;
+    }
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    .bulk-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .bulk-actions button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .model-list {
+      display: grid;
+      gap: 10px;
+    }
+    .pair-row {
+      border: 1px solid #e3e8ef;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfe;
+    }
+    .pair-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 7px;
+    }
+    .pair-title {
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pair-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .pair-actions button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 4px 6px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .pair-actions button:hover, .bulk-actions button:hover {
+      border-color: #aab4c2;
+      background: #f8fafc;
+    }
+    .pair-models {
+      display: grid;
+      gap: 6px;
+    }
+    label.model-toggle {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      font-size: 13px;
+      line-height: 1.25;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 1px 0 0;
+      accent-color: var(--accent);
+    }
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    .variant-pill {
+      border: 1px solid #d8dee8;
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 10px;
+      line-height: 1.2;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .variant-pill.instruct {
+      border-color: #b8c7dc;
+      color: #334155;
+      background: #eef4ff;
+    }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    .chart-meta {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 560px;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: 560px;
+      overflow: visible;
+    }
+    .grid {
+      stroke: #e6eaf0;
+      stroke-width: 1;
+    }
+    .axis-line {
+      stroke: #aab4c2;
+      stroke-width: 1;
+    }
+    .grid-label {
+      fill: var(--muted);
+      font-size: 11px;
+    }
+    .series {
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .series.instruct { stroke-dasharray: 7 5; }
+    .point {
+      stroke: #fff;
+      stroke-width: 1.4;
+      cursor: crosshair;
+    }
+    .tooltip {
+      position: absolute;
+      min-width: 230px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.94);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+      transform: translate(12px, -50%);
+      display: none;
+      z-index: 5;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
+    }
+    .tooltip strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+    .loader {
+      padding: 18px;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .key {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    @media (max-width: 920px) {
+      header {
+        display: block;
+      }
+      header a {
+        display: inline-block;
+        margin-top: 8px;
+      }
+      main {
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+      aside {
+        position: static;
+        max-height: none;
+      }
+      .chart-wrap, svg {
+        min-height: 520px;
+        height: 520px;
+      }
+      .chart-head {
+        display: block;
+      }
+      .chart-meta {
+        text-align: left;
+        margin-top: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>WCS Eminem Comparison</h1>
+      <p class="subhead" id="headerSubhead">Interactive view from eminem.csv.</p>
+    </div>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <a href="index.html">Main Suite</a>
+      <a href="temperature.html">Temperature comparison</a>
+    </div>
+  </header>
+  <main>
+    <aside>
+      <div class="control-group">
+        <p class="control-title">Dataset</p>
+        <div class="segmented" id="datasetTabs">
+          <button type="button" data-dataset="eminem.csv" class="active">Eminem</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <p class="control-title">Chart Mode</p>
+        <div class="segmented" id="modeTabs">
+          <button type="button" data-mode="temperature" class="active">T sweep</button>
+          <button type="button" data-mode="parameter">Param sweep</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <p class="control-title">Decoder</p>
+        <div class="segmented" id="decoderTabs">
+          <button type="button" data-decoder="top_p" class="active">top-p</button>
+          <button type="button" data-decoder="top_k">top-k</button>
+          <button type="button" data-decoder="min_p">min-p</button>
+        </div>
+      </div>
+
+      <div class="control-group" id="parameterControl">
+        <p class="control-title">Parameter</p>
+        <select id="parameterSelect"></select>
+      </div>
+
+      <div class="control-group" id="temperatureControl" hidden>
+        <p class="control-title">Temperature</p>
+        <select id="temperatureSelect"></select>
+      </div>
+
+      <div class="control-group">
+        <p class="control-title">Metric</p>
+        <div class="metric-select" id="metricTabs">
+          <button type="button" data-metric="word_any_wcs" class="active">Words covered in any context</button>
+          <button type="button" data-metric="word_all_wcs">Words covered in all contexts</button>
+          <button type="button" data-metric="context_wcs">Context-level coverage</button>
+        </div>
+      </div>
+
+      <p class="control-title">Model Controls</p>
+      <div class="bulk-actions">
+        <button type="button" data-action="all">Show all</button>
+        <button type="button" data-action="none">Hide all</button>
+        <button type="button" data-action="base">Base only</button>
+        <button type="button" data-action="instruct">Instruct only</button>
+        <button type="button" data-action="gemma">Gemma only</button>
+      </div>
+      <div class="model-list" id="modelList"></div>
+      <div class="key">Solid lines are base/pre-trained models. Dashed lines are instruct, tuned, or distilled models. Colors are fixed per model.</div>
+    </aside>
+
+    <section>
+      <div class="chart-head">
+        <div>
+          <h2 id="chartTitle">Temperature Effect</h2>
+          <p class="subhead" id="chartSubtitle"></p>
+        </div>
+        <div class="chart-meta" id="chartMeta"></div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart" role="img" aria-label="WCS temperature comparison chart"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="loader" id="loader" hidden>
+        Could not load <code>eminem.csv</code> automatically. If you opened this page directly from disk, choose the CSV file here.
+        <br>
+        <input type="file" id="fileInput" accept=".csv,text/csv">
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      rows: [],
+      models: [],
+      temperatures: [],
+      mode: "temperature",
+      decoder: "top_p",
+      parameter: null,
+      temperature: null,
+      metric: "word_any_wcs",
+      enabled: new Set(),
+      colorMode: "normal",
+      dataset: "eminem.csv"
+    };
+
+    const colors = {
+      "Qwen/Qwen2.5-14B": "#2563eb",
+      "Qwen/Qwen2.5-14B-Instruct": "#1d4ed8",
+      "Qwen/Qwen3.5-9B-Base": "#06b6d4",
+      "Qwen/Qwen3.5-9B": "#0891b2",
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": "#dc2626",
+      "deepseek-ai/DeepSeek-V2-Lite": "#991b1b",
+      "google/gemma-2-9b": "#65a30d",
+      "google/gemma-2-9b-it": "#3f6212",
+      "google/gemma-3-12b-pt": "#16a34a",
+      "google/gemma-3-12b-it": "#15803d",
+      "google/gemma-4-E4B": "#84cc16",
+      "google/gemma-4-E4B-it": "#4d7c0f",
+      "meta-llama/Llama-3.1-8B": "#9333ea",
+      "meta-llama/Llama-3.1-8B-Instruct": "#7e22ce",
+      "mistralai/Mistral-7B-v0.3": "#f97316",
+      "mistralai/Mistral-7B-Instruct-v0.3": "#c2410c"
+    };
+
+    const gemmaColors = {
+      "google/gemma-2-9b": "#2563eb",
+      "google/gemma-2-9b-it": "#1d4ed8",
+      "google/gemma-3-12b-pt": "#dc2626",
+      "google/gemma-3-12b-it": "#991b1b",
+      "google/gemma-4-E4B": "#f97316",
+      "google/gemma-4-E4B-it": "#c2410c"
+    };
+
+    const displayNames = {
+      "Qwen/Qwen2.5-14B": "Qwen2.5-14B",
+      "Qwen/Qwen2.5-14B-Instruct": "Qwen2.5-14B-Instruct",
+      "Qwen/Qwen3.5-9B-Base": "Qwen3.5-9B-Base",
+      "Qwen/Qwen3.5-9B": "Qwen3.5-9B",
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": "DeepSeek-R1-Distill-Qwen-14B",
+      "deepseek-ai/DeepSeek-V2-Lite": "DeepSeek-V2-Lite",
+      "google/gemma-2-9b": "Gemma-2-9B",
+      "google/gemma-2-9b-it": "Gemma-2-9B-it",
+      "google/gemma-3-12b-pt": "Gemma-3-12B-pt",
+      "google/gemma-3-12b-it": "Gemma-3-12B-it",
+      "google/gemma-4-E4B": "Gemma-4-E4B",
+      "google/gemma-4-E4B-it": "Gemma-4-E4B-it",
+      "meta-llama/Llama-3.1-8B": "Llama-3.1-8B",
+      "meta-llama/Llama-3.1-8B-Instruct": "Llama-3.1-8B-Instruct",
+      "mistralai/Mistral-7B-v0.3": "Mistral-7B-v0.3",
+      "mistralai/Mistral-7B-Instruct-v0.3": "Mistral-7B-Instruct-v0.3"
+    };
+
+    const modelMeta = {
+      "Qwen/Qwen2.5-14B": { variant: "base", pair: "Qwen2.5-14B" },
+      "Qwen/Qwen2.5-14B-Instruct": { variant: "instruct", pair: "Qwen2.5-14B" },
+      "Qwen/Qwen3.5-9B-Base": { variant: "base", pair: "Qwen3.5-9B" },
+      "Qwen/Qwen3.5-9B": { variant: "instruct", pair: "Qwen3.5-9B" },
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": { variant: "instruct", pair: "DeepSeek" },
+      "deepseek-ai/DeepSeek-V2-Lite": { variant: "base", pair: "DeepSeek" },
+      "google/gemma-2-9b": { variant: "base", pair: "Gemma-2-9B" },
+      "google/gemma-2-9b-it": { variant: "instruct", pair: "Gemma-2-9B" },
+      "google/gemma-3-12b-pt": { variant: "base", pair: "Gemma-3-12B" },
+      "google/gemma-3-12b-it": { variant: "instruct", pair: "Gemma-3-12B" },
+      "google/gemma-4-E4B": { variant: "base", pair: "Gemma-4-E4B" },
+      "google/gemma-4-E4B-it": { variant: "instruct", pair: "Gemma-4-E4B" },
+      "meta-llama/Llama-3.1-8B": { variant: "base", pair: "Llama-3.1-8B" },
+      "meta-llama/Llama-3.1-8B-Instruct": { variant: "instruct", pair: "Llama-3.1-8B" },
+      "mistralai/Mistral-7B-v0.3": { variant: "base", pair: "Mistral-7B-v0.3" },
+      "mistralai/Mistral-7B-Instruct-v0.3": { variant: "instruct", pair: "Mistral-7B-v0.3" }
+    };
+
+    const metricLabels = {
+      word_any_wcs: "Words covered in at least one context",
+      word_all_wcs: "Words covered in all contexts",
+      context_wcs: "Target-word context coverage"
+    };
+    const decoderLabels = { top_p: "top-p", top_k: "top-k", min_p: "min-p" };
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const headers = splitCsvLine(lines.shift());
+      return lines.filter(Boolean).map(line => {
+        const values = splitCsvLine(line);
+        const row = {};
+        headers.forEach((header, index) => row[header] = values[index] ?? "");
+        row.temperature = Number(row.temperature);
+        row.parameter = Number(row.parameter);
+        row.word_any_wcs = Number(row.word_any_wcs);
+        row.word_all_wcs = Number(row.word_all_wcs);
+        row.covered_words_any = Number(row.covered_words_any);
+        row.covered_words_all = Number(row.covered_words_all);
+        row.total_words = Number(row.total_words);
+        row.covered_contexts = Number(row.covered_contexts);
+        row.total_contexts = Number(row.total_contexts);
+        row.context_wcs = row.total_contexts ? row.covered_contexts / row.total_contexts : 0;
+        return row;
+      });
+    }
+
+    function splitCsvLine(line) {
+      const out = [];
+      let current = "";
+      let quoted = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        if (char === '"' && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === "," && !quoted) {
+          out.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      out.push(current);
+      return out;
+    }
+
+    async function loadData() {
+      try {
+        const datasets = [state.dataset];
+        state.rows = [];
+        for (const ds of datasets) {
+          const response = await fetch(ds, { cache: "no-store" });
+          if (!response.ok) throw new Error("CSV fetch failed");
+          const text = await response.text();
+          const rows = parseCsv(text);
+          rows.forEach(r => r.dataset = ds);
+          state.rows.push(...rows);
+        }
+        initialize(state.rows);
+      } catch (error) {
+        document.getElementById("loader").hidden = false;
+      }
+    }
+
+    function initialize(rows) {
+      state.rows = rows;
+      const allModels = Array.from(new Set(rows.map(row => row.model))).sort((a, b) => (displayNames[a] || a).localeCompare(displayNames[b] || b));
+      state.models = allModels;
+      
+      state.temperatures = Array.from(new Set(rows.map(row => row.temperature))).sort((a, b) => a - b);
+      state.temperature = state.temperatures.includes(state.temperature) ? state.temperature : (state.temperatures.includes(1) ? 1 : state.temperatures[0]);
+      
+      if (state.enabled.size === 0) {
+        state.enabled = new Set(state.models);
+      }
+      
+      buildControls();
+      updateParameters();
+      updateTemperatures();
+      updateModeControls();
+      render();
+    }
+
+    function buildControls() {
+      const list = document.getElementById("modelList");
+      list.innerHTML = "";
+      const pairs = new Map();
+      state.models.forEach(model => {
+        const pair = modelMeta[model]?.pair || displayNames[model] || model;
+        if (!pairs.has(pair)) pairs.set(pair, []);
+        pairs.get(pair).push(model);
+      });
+      Array.from(pairs.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([pair, models]) => {
+          models.sort((a, b) => variantClass(a).localeCompare(variantClass(b)) || (displayNames[a] || a).localeCompare(displayNames[b] || b));
+          const row = document.createElement("div");
+          row.className = "pair-row";
+          const head = document.createElement("div");
+          head.className = "pair-head";
+          const title = document.createElement("div");
+          title.className = "pair-title";
+          title.textContent = pair;
+          const actions = document.createElement("div");
+          actions.className = "pair-actions";
+          [
+            ["pair", "Pair"],
+            ["base", "Base"],
+            ["instruct", "Inst"]
+          ].forEach(([action, label]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.addEventListener("click", () => {
+              state.colorMode = "normal";
+              if (action === "pair") {
+                state.enabled = new Set(models);
+              } else {
+                state.enabled = new Set(models.filter(model => (modelMeta[model]?.variant || "base") === action));
+              }
+              syncChecks();
+              syncSwatches();
+              render();
+            });
+            actions.append(button);
+          });
+          head.append(title, actions);
+          const modelBox = document.createElement("div");
+          modelBox.className = "pair-models";
+          models.forEach(model => modelBox.append(modelToggle(model)));
+          row.append(head, modelBox);
+          list.append(row);
+        });
+    }
+
+    function modelToggle(model) {
+        const label = document.createElement("label");
+        label.className = "model-toggle";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = state.enabled.has(model);
+        input.dataset.model = model;
+        input.addEventListener("change", () => {
+          state.colorMode = "normal";
+          if (input.checked) state.enabled.add(model);
+          else state.enabled.delete(model);
+          syncSwatches();
+          render();
+        });
+        const name = document.createElement("span");
+        name.innerHTML = `<span class="swatch" data-swatch="${model}" style="background:${colorFor(model)}"></span>${displayNames[model] || model}`;
+        const variant = modelMeta[model]?.variant || "base";
+        const pill = document.createElement("span");
+        pill.className = `variant-pill ${variant === "base" ? "" : "instruct"}`;
+        pill.textContent = variant;
+        label.append(input, name, pill);
+        return label;
+    }
+
+    function updateParameters() {
+      const select = document.getElementById("parameterSelect");
+      const filteredRows = state.rows.filter(row => row.decoder === state.decoder);
+      const values = Array.from(new Set(filteredRows.map(row => row.parameter))).sort((a, b) => a - b);
+      const preferred = state.decoder === "top_p" ? 0.95 : state.decoder === "top_k" ? 20 : 0.05;
+      state.parameter = values.includes(state.parameter) ? state.parameter : (values.includes(preferred) ? preferred : values[0]);
+      select.innerHTML = "";
+      values.forEach(value => {
+        const option = document.createElement("option");
+        option.value = String(value);
+        option.textContent = formatParameter(value, state.decoder);
+        option.selected = value === state.parameter;
+        select.append(option);
+      });
+    }
+
+    function updateTemperatures() {
+      const select = document.getElementById("temperatureSelect");
+      state.temperature = state.temperatures.includes(state.temperature) ? state.temperature : (state.temperatures.includes(1) ? 1 : state.temperatures[0]);
+      select.innerHTML = "";
+      state.temperatures.forEach(value => {
+        const option = document.createElement("option");
+        option.value = String(value);
+        option.textContent = `T=${formatTemperature(value)}`;
+        option.selected = value === state.temperature;
+        select.append(option);
+      });
+    }
+
+    function updateModeControls() {
+      const isTemperatureSweep = state.mode === "temperature";
+      document.getElementById("parameterControl").hidden = !isTemperatureSweep;
+      document.getElementById("temperatureControl").hidden = isTemperatureSweep;
+    }
+
+    document.getElementById("datasetTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-dataset]");
+      if (!button) return;
+      state.dataset = button.dataset.dataset;
+      document.querySelectorAll("#datasetTabs button").forEach(item => item.classList.toggle("active", item === button));
+      loadData();
+    });
+
+    document.getElementById("modeTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-mode]");
+      if (!button) return;
+      state.mode = button.dataset.mode;
+      document.querySelectorAll("#modeTabs button").forEach(item => item.classList.toggle("active", item === button));
+      updateModeControls();
+      render();
+    });
+
+    document.getElementById("decoderTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-decoder]");
+      if (!button) return;
+      state.decoder = button.dataset.decoder;
+      document.querySelectorAll("#decoderTabs button").forEach(item => item.classList.toggle("active", item === button));
+      updateParameters();
+      render();
+    });
+
+    document.getElementById("metricTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-metric]");
+      if (!button) return;
+      state.metric = button.dataset.metric;
+      document.querySelectorAll("#metricTabs button").forEach(item => item.classList.toggle("active", item === button));
+      render();
+    });
+
+    document.getElementById("parameterSelect").addEventListener("change", event => {
+      state.parameter = Number(event.target.value);
+      render();
+    });
+
+    document.getElementById("temperatureSelect").addEventListener("change", event => {
+      state.temperature = Number(event.target.value);
+      render();
+    });
+
+    document.querySelector(".bulk-actions").addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const action = button.dataset.action;
+      state.colorMode = action === "gemma" ? "gemma" : "normal";
+      if (action === "all") state.enabled = new Set(state.models);
+      if (action === "none") state.enabled = new Set();
+      if (action === "base") state.enabled = new Set(state.models.filter(model => (modelMeta[model]?.variant || "base") === "base"));
+      if (action === "instruct") state.enabled = new Set(state.models.filter(model => (modelMeta[model]?.variant || "base") !== "base"));
+      if (action === "gemma") state.enabled = new Set(state.models.filter(model => model.startsWith("google/gemma-")));
+      syncChecks();
+      syncSwatches();
+      render();
+    });
+
+    document.getElementById("fileInput").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        document.getElementById("loader").hidden = true;
+        initialize(parseCsv(String(reader.result)));
+      };
+      reader.readAsText(file);
+    });
+
+    function syncChecks() {
+      document.querySelectorAll("input[data-model]").forEach(input => {
+        input.checked = state.enabled.has(input.dataset.model);
+      });
+    }
+
+    function syncSwatches() {
+      document.querySelectorAll("[data-swatch]").forEach(item => {
+        item.style.background = colorFor(item.dataset.swatch);
+      });
+    }
+
+    function render() {
+      if (!state.rows.length || state.parameter === null) return;
+      const svg = document.getElementById("chart");
+      svg.innerHTML = "";
+      const width = svg.clientWidth || 900;
+      const height = svg.clientHeight || 560;
+      const margin = { top: 34, right: 34, bottom: 58, left: 62 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      const rows = state.rows.filter(row => {
+        if (row.decoder !== state.decoder || !state.enabled.has(row.model)) return false;
+        if (state.mode === "temperature") return row.parameter === state.parameter;
+        return row.temperature === state.temperature;
+      });
+      
+      const bySeries = new Map();
+      rows.forEach(row => {
+        const key = row.model;
+        if (!bySeries.has(key)) bySeries.set(key, []);
+        bySeries.get(key).push(row);
+      });
+      bySeries.forEach(values => values.sort((a, b) => xValue(a) - xValue(b)));
+
+      const xValues = state.mode === "temperature" ? state.temperatures : parameterValues();
+      const xMin = Math.min(...xValues);
+      const xMax = Math.max(...xValues);
+      const x = value => margin.left + ((value - xMin) / (xMax - xMin || 1)) * innerWidth;
+      const y = value => margin.top + (1 - value) * innerHeight;
+
+      drawGrid(svg, width, height, margin, innerWidth, innerHeight, x, y, xValues);
+      drawSeries(svg, bySeries, x, y);
+
+      document.getElementById("chartTitle").textContent = state.mode === "temperature"
+        ? `${metricLabels[state.metric]} by temperature`
+        : `${metricLabels[state.metric]} by ${decoderLabels[state.decoder]}`;
+      document.getElementById("chartSubtitle").textContent = state.mode === "temperature"
+        ? `${decoderLabels[state.decoder]} = ${formatParameter(state.parameter, state.decoder)}`
+        : `T=${formatTemperature(state.temperature)}`;
+      document.getElementById("chartMeta").textContent = `${bySeries.size} series visible`;
+      document.getElementById("headerSubhead").textContent = "Interactive view from eminem.csv";
+    }
+
+    function drawGrid(svg, width, height, margin, innerWidth, innerHeight, x, y, xValues) {
+      [0, 0.25, 0.5, 0.75, 1].forEach(tick => {
+        line(svg, margin.left, y(tick), width - margin.right, y(tick), "grid");
+        text(svg, margin.left - 10, y(tick) + 4, `${Math.round(tick * 100)}%`, "grid-label", "end");
+      });
+      xValues.forEach(value => {
+        line(svg, x(value), margin.top, x(value), height - margin.bottom, "grid");
+        text(svg, x(value), height - margin.bottom + 24, xLabel(value), "grid-label", "middle");
+      });
+      line(svg, margin.left, height - margin.bottom, width - margin.right, height - margin.bottom, "axis-line");
+      line(svg, margin.left, margin.top, margin.left, height - margin.bottom, "axis-line");
+      text(svg, margin.left + innerWidth / 2, height - 14, state.mode === "temperature" ? "temperature" : decoderLabels[state.decoder], "grid-label", "middle");
+      const yLabel = text(svg, 18, margin.top + innerHeight / 2, metricLabels[state.metric], "grid-label", "middle");
+      yLabel.setAttribute("transform", `rotate(-90 18 ${margin.top + innerHeight / 2})`);
+    }
+
+    function drawSeries(svg, bySeries, x, y) {
+      bySeries.forEach((values, key) => {
+        const model = key;
+        const isWL = false;
+        const isFJ = false;
+        const path = values.map((row, index) => `${index ? "L" : "M"}${x(xValue(row)).toFixed(2)},${y(row[state.metric]).toFixed(2)}`).join(" ");
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathEl.setAttribute("d", path);
+        pathEl.setAttribute("class", `series ${variantClass(model)}`);
+        pathEl.setAttribute("stroke", colorFor(model));
+        if (isWL) {
+           pathEl.setAttribute("stroke-dasharray", variantClass(model) === "base" ? "2 3" : "8 3 2 3");
+           pathEl.setAttribute("stroke-width", "1.8");
+        } else if (isFJ) {
+           pathEl.setAttribute("stroke-dasharray", variantClass(model) === "base" ? "5 5" : "10 5 5 5");
+           pathEl.setAttribute("stroke-width", "1.8");
+        }
+        svg.append(pathEl);
+        values.forEach(row => {
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("cx", x(xValue(row)));
+          circle.setAttribute("cy", y(row[state.metric]));
+          circle.setAttribute("r", (isWL || isFJ) ? (variantClass(model) === "base" ? 3 : 3.8) : (variantClass(model) === "base" ? 4 : 4.8));
+          circle.setAttribute("class", "point");
+          circle.setAttribute("fill", colorFor(model));
+          circle.addEventListener("mousemove", event => showTooltip(event, row));
+          circle.addEventListener("mouseleave", hideTooltip);
+          svg.append(circle);
+        });
+      });
+    }
+
+    function showTooltip(event, row) {
+      const tooltip = document.getElementById("tooltip");
+      tooltip.innerHTML = `
+        <strong>${displayNames[row.model] || row.model}</strong>
+        Dataset: Eminem<br>
+        T=${formatTemperature(row.temperature)}<br>
+        ${decoderLabels[row.decoder]}=${formatParameter(row.parameter, row.decoder)}<br>
+        ${metricLabels[state.metric]}: ${(row[state.metric] * 100).toFixed(1)}%<br>
+        Words any/all: ${row.covered_words_any}/${row.covered_words_all} of ${row.total_words}<br>
+        Contexts: ${row.covered_contexts} of ${row.total_contexts}
+      `;
+      const wrap = document.querySelector(".chart-wrap").getBoundingClientRect();
+      tooltip.style.left = `${event.clientX - wrap.left}px`;
+      tooltip.style.top = `${event.clientY - wrap.top}px`;
+      tooltip.style.display = "block";
+    }
+
+    function hideTooltip() {
+      document.getElementById("tooltip").style.display = "none";
+    }
+
+    function variantClass(model) {
+      return (modelMeta[model]?.variant || "base") === "base" ? "base" : "instruct";
+    }
+
+    function colorFor(model) {
+      return (state.colorMode === "gemma" && gemmaColors[model]) ? gemmaColors[model] : (colors[model] || "#64748b");
+    }
+
+    function parameterValues() {
+      return Array.from(new Set(state.rows.filter(row => row.decoder === state.decoder).map(row => row.parameter))).sort((a, b) => a - b);
+    }
+
+    function xValue(row) {
+      return state.mode === "temperature" ? row.temperature : row.parameter;
+    }
+
+    function xLabel(value) {
+      return state.mode === "temperature" ? `T=${formatTemperature(value)}` : formatParameter(value, state.decoder);
+    }
+
+    function formatTemperature(value) {
+      return Number(value).toFixed(1).replace(/\.0$/, ".0");
+    }
+
+    function formatParameter(value, decoder) {
+      if (decoder === "top_k") return String(Math.round(value));
+      return Number(value).toFixed(2).replace(/0$/, "").replace(/0$/, "");
+    }
+
+    function line(svg, x1, y1, x2, y2, className) {
+      const item = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      item.setAttribute("x1", x1);
+      item.setAttribute("y1", y1);
+      item.setAttribute("x2", x2);
+      item.setAttribute("y2", y2);
+      item.setAttribute("class", className);
+      svg.append(item);
+      return item;
+    }
+
+    function text(svg, x, y, value, className, anchor) {
+      const item = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      item.setAttribute("x", x);
+      item.setAttribute("y", y);
+      item.setAttribute("class", className);
+      item.setAttribute("text-anchor", anchor);
+      item.textContent = value;
+      svg.append(item);
+      return item;
+    }
+
+    window.addEventListener("resize", render);
+    loadData();
+</script>
+</body>
+</html>
