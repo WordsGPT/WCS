@@ -262,6 +262,42 @@ Model files download into Hugging Face cache, generally under:
 ~/.cache/huggingface
 ```
 
+## Spanish Gutenberg Corpus Export
+
+Use the checked-in exporter rather than ad hoc Python heredocs. It inspects the
+Hugging Face dataset configs and language values before exporting, and exits
+with diagnostics if it picked a preview/config slice with no Spanish books.
+
+Install the dependency once on the server if needed:
+
+```bash
+.venv/bin/pip install datasets
+```
+
+Inspect available configs/languages without writing files:
+
+```bash
+.venv/bin/python scripts/export_spanish_gutenberg.py --inspect-only
+```
+
+Export long Spanish books:
+
+```bash
+.venv/bin/python scripts/export_spanish_gutenberg.py \
+  --output-dir data/raw/spanish_gutenberg \
+  --min-chars 100000
+```
+
+If the default config candidates fail, rerun with a specific config shown by
+`--inspect-only`:
+
+```bash
+.venv/bin/python scripts/export_spanish_gutenberg.py \
+  --configs CONFIG_NAME \
+  --output-dir data/raw/spanish_gutenberg \
+  --min-chars 100000
+```
+
 ## Known Compatibility Patches
 
 `src/wcs/audit.py` includes compatibility shims for some Hugging Face remote
