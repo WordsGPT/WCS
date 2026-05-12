@@ -52,52 +52,19 @@ def is_text_coherent(
     language: str = "English",
     timeout_seconds: float = 60.0,
 ) -> bool:
-    load_env_file()
-
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("Warning: GEMINI_API_KEY not set. Bypassing coherence check.", flush=True)
+    try:
+        from langdetect import detect, DetectorFactory
+        DetectorFactory.seed = 0
+    except ImportError:
+        print("Warning: 'langdetect' is not installed. Please run 'pip install langdetect' to enable coherence checking.", flush=True)
         return True
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    excerpt = f"{text} {target_word}".strip()
-    prompt = (
-        f"Is the following excerpt coherent {language} prose from a book, "
-        "even if it starts or ends mid-sentence? Answer only 'yes' or 'no'."
-        f"\n\nExcerpt:\n{excerpt}"
-    )
-    data = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.0}
-    }
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-    )
-
-    max_attempts = 5
-    for attempt in range(max_attempts):
-        try:
-            with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                try:
-                    text_response = result["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
-                    return "yes" in text_response
-                except (KeyError, IndexError):
-                    return False
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8", errors="replace")
-            if e.code == 429 or 500 <= e.code < 600:
-                time.sleep(2 ** attempt)
-                continue
-            raise RuntimeError(f"Gemini API error {e.code}: {body}") from e
-        except (TimeoutError, socket.timeout, urllib.error.URLError) as e:
-            if attempt < max_attempts - 1:
-                time.sleep(2 ** attempt)
-                continue
-            raise RuntimeError(f"Error calling Gemini: {e}") from e
-    raise RuntimeError(f"Gemini API failed after {max_attempts} attempts.")
+    try:
+        lang = detect(text)
+        expected = "es" if language.lower() == "spanish" else "en"
+        return lang == expected
+    except Exception:
+        return False
 
 
 @dataclass(frozen=True)
