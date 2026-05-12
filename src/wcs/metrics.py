@@ -243,6 +243,7 @@ def write_summary_csv(rows: Iterable[WcsSummaryRow], output_path: Path) -> None:
 def write_word_summary_csv(rows: Iterable[WcsWordSummaryRow], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
+        "temperature",
         "model",
         "decoder",
         "parameter",
