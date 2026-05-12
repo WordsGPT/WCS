@@ -264,17 +264,11 @@ Model files download into Hugging Face cache, generally under:
 
 ## Spanish Gutenberg Corpus Export
 
-Use the checked-in exporter rather than ad hoc Python heredocs. It inspects the
-Hugging Face dataset configs and language values before exporting, and exits
-with diagnostics if it picked a preview/config slice with no Spanish books.
+Use the checked-in exporter rather than ad hoc Python heredocs. By default it
+uses Gutendex metadata to find Spanish Project Gutenberg books with plain text
+downloads, then strips Gutenberg boilerplate and keeps long texts.
 
-Install the dependency once on the server if needed:
-
-```bash
-.venv/bin/pip install datasets
-```
-
-Inspect available configs/languages without writing files:
+Inspect the Gutendex query without writing files:
 
 ```bash
 .venv/bin/python scripts/export_spanish_gutenberg.py --inspect-only
@@ -288,11 +282,13 @@ Export long Spanish books:
   --min-chars 100000
 ```
 
-If the default config candidates fail, rerun with a specific config shown by
-`--inspect-only`:
+If you explicitly want to test the Hugging Face dataset path instead, use
+`--source hf`. This requires `datasets` and reports configs/language values
+before export:
 
 ```bash
 .venv/bin/python scripts/export_spanish_gutenberg.py \
+  --source hf \
   --configs CONFIG_NAME \
   --output-dir data/raw/spanish_gutenberg \
   --min-chars 100000
