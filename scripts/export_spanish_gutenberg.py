@@ -56,7 +56,7 @@ def fetch_json(url: str, timeout: int, retries: int) -> dict[str, Any]:
         try:
             with urllib.request.urlopen(url, timeout=timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
-        except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as error:
+        except (TimeoutError, urllib.error.URLError, json.JSONDecodeError, OSError) as error:
             last_error = error
             if attempt < retries:
                 time.sleep(min(2 ** attempt, 20))
