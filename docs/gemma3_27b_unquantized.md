@@ -22,12 +22,9 @@ MAX_MEMORY=0=44GiB,1=44GiB,cpu=160GiB
 CPU offload remains available if needed. You can still override any setting
 inline, but the default path should be just `./goCarlos`.
 
-If Hugging Face access is gated, authenticate first:
-
-```bash
-source .venv-gemma3-27b/bin/activate
-huggingface-cli login
-```
+If Hugging Face access is gated and no token is already present, `./goCarlos`
+starts the Hugging Face login flow automatically. Paste a token with Gemma
+access when prompted.
 
 Useful smoke test before the full run:
 

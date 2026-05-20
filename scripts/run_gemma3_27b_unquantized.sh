@@ -150,9 +150,71 @@ install_torch() {
 
 install_dependencies() {
   log "Installing Python dependencies"
-  python -m pip install --upgrade pip setuptools wheel
+  python -m pip install --upgrade pip wheel packaging
   install_torch
-  python -m pip install --upgrade "transformers>=4.51.0" accelerate sentencepiece protobuf safetensors huggingface_hub
+  python -m pip install --upgrade "transformers>=4.51.0,<6" accelerate sentencepiece protobuf safetensors "huggingface_hub[cli]"
+}
+
+hf_token_exists() {
+  if [ -n "${HF_TOKEN:-}" ]; then
+    return 0
+  fi
+  python - <<'PY'
+from pathlib import Path
+token = Path.home() / ".cache" / "huggingface" / "token"
+raise SystemExit(0 if token.exists() and token.read_text(encoding="utf-8").strip() else 1)
+PY
+}
+
+run_hf_login() {
+  if command -v hf >/dev/null 2>&1; then
+    hf auth login
+    return
+  fi
+  if command -v huggingface-cli >/dev/null 2>&1; then
+    huggingface-cli login
+    return
+  fi
+
+  log "Installing Hugging Face CLI"
+  python -m pip install --upgrade "huggingface_hub[cli]"
+
+  if command -v hf >/dev/null 2>&1; then
+    hf auth login
+    return
+  fi
+  if command -v huggingface-cli >/dev/null 2>&1; then
+    huggingface-cli login
+    return
+  fi
+
+  die "Could not find the Hugging Face CLI after installing huggingface_hub[cli]."
+}
+
+ensure_hf_auth() {
+  if hf_token_exists; then
+    return
+  fi
+
+  log "No Hugging Face token found. Gemma 3 27B usually requires gated model access."
+  if [ -t 0 ]; then
+    log "Starting Hugging Face login now. Paste a token with Gemma access when prompted."
+    run_hf_login
+    hf_token_exists || die "Hugging Face login did not create a token. Confirm the token was accepted and rerun ./goCarlos."
+    return
+  fi
+
+  die "No interactive terminal is available for Hugging Face login. Rerun with HF_TOKEN=your_token ./goCarlos"
+}
+
+print_failure_log_tail() {
+  local log_file
+  log_file="$(find "$LOGS_DIR" -type f -name 'audit.*.log' -print 2>/dev/null | sort | tail -n 1 || true)"
+  if [ -n "$log_file" ] && [ -f "$log_file" ]; then
+    echo
+    log "Audit failed. Last lines from $log_file:"
+    tail -n 80 "$log_file" || true
+  fi
 }
 
 PYTHON_BIN="$(find_python)"
@@ -172,17 +234,7 @@ if [ "$INSTALL_DEPS" = "1" ]; then
   install_dependencies
 fi
 
-if [ -z "${HF_TOKEN:-}" ]; then
-  if ! python - <<'PY'
-from pathlib import Path
-token = Path.home() / ".cache" / "huggingface" / "token"
-raise SystemExit(0 if token.exists() and token.read_text(encoding="utf-8").strip() else 1)
-PY
-  then
-    log "HF_TOKEN is not set and no cached Hugging Face token was found."
-    log "If Gemma access is gated on this machine, run: source $VENV_DIR/bin/activate && huggingface-cli login"
-  fi
-fi
+ensure_hf_auth
 
 COMMAND=(
   python -u scripts/run_model_suite.py
@@ -211,4 +263,12 @@ echo "Results: $RESULTS_DIR"
 echo "Logs: $LOGS_DIR"
 echo
 
+set +e
 "${COMMAND[@]}" 2>&1 | tee "$LOGS_DIR/run.log"
+status=${PIPESTATUS[0]}
+set -e
+
+if [ "$status" -ne 0 ]; then
+  print_failure_log_tail
+  exit "$status"
+fi
