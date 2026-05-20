@@ -304,6 +304,9 @@ def load_hf_model_and_tokenizer(
     device: str,
     dtype: str = "auto",
     trust_remote_code: bool = False,
+    device_map: str | None = None,
+    max_memory: dict[Any, str] | None = None,
+    offload_folder: str | None = None,
 ) -> tuple[Any, Any]:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -320,14 +323,42 @@ def load_hf_model_and_tokenizer(
         torch_dtype = torch.float32
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=trust_remote_code)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch_dtype,
-        trust_remote_code=trust_remote_code,
-    )
-    model.to(device)
+    model_kwargs: dict[str, Any] = {
+        "torch_dtype": torch_dtype,
+        "trust_remote_code": trust_remote_code,
+    }
+    if device_map:
+        model_kwargs["device_map"] = device_map
+        model_kwargs["low_cpu_mem_usage"] = True
+    if max_memory:
+        model_kwargs["max_memory"] = max_memory
+    if offload_folder:
+        model_kwargs["offload_folder"] = offload_folder
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+    if not device_map:
+        model.to(device)
     model.eval()
     return model, tokenizer
+
+
+def parse_max_memory(raw: str | None) -> dict[Any, str] | None:
+    if not raw:
+        return None
+    values: dict[Any, str] = {}
+    for part in raw.split(","):
+        if not part.strip():
+            continue
+        key, separator, value = part.partition("=")
+        if not separator:
+            raise ValueError("--max-memory entries must look like 0=44GiB,1=44GiB,cpu=160GiB")
+        clean_key: Any = key.strip()
+        if clean_key.startswith("cuda:"):
+            clean_key = clean_key.removeprefix("cuda:")
+        if isinstance(clean_key, str) and clean_key.isdigit():
+            clean_key = int(clean_key)
+        values[clean_key] = value.strip()
+    return values
 
 
 def patch_transformers_remote_code_compatibility() -> None:
@@ -376,6 +407,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", required=True, help="Hugging Face model id or local model path.")
     parser.add_argument("--device", default="cuda", help="Example: cuda, cuda:0, cpu")
     parser.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
+    parser.add_argument("--device-map", default=None, help="Optional Transformers device_map, e.g. auto.")
+    parser.add_argument(
+        "--max-memory",
+        default=None,
+        help="Optional comma list for device_map, e.g. 0=44GiB,1=44GiB,cpu=160GiB.",
+    )
+    parser.add_argument("--offload-folder", default=None, help="Optional folder for unquantized CPU/disk offload.")
     parser.add_argument("--limit", type=int, default=None, help="Optional sample limit for smoke tests.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures, e.g. 1.0,0.7,1.5")
@@ -390,6 +428,9 @@ def main() -> None:
         device=args.device,
         dtype=args.dtype,
         trust_remote_code=args.trust_remote_code,
+        device_map=args.device_map,
+        max_memory=parse_max_memory(args.max_memory),
+        offload_folder=args.offload_folder,
     )
     samples = load_samples(args.samples, limit=args.limit)
     if args.temperatures:

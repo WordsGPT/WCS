@@ -76,6 +76,8 @@ DEFAULT_MODELS = [
     ),
     ModelSpec("gemma3-12b-base", "google/gemma-3-12b-pt", "gemma3", "base"),
     ModelSpec("gemma3-12b-it", "google/gemma-3-12b-it", "gemma3", "instruct"),
+    ModelSpec("gemma3-27b-base", "google/gemma-3-27b-pt", "gemma3", "base"),
+    ModelSpec("gemma3-27b-it", "google/gemma-3-27b-it", "gemma3", "instruct"),
     ModelSpec("gemma4-e4b-base", "google/gemma-4-E4B", "gemma4", "base"),
     ModelSpec("gemma4-e4b-it", "google/gemma-4-E4B-it", "gemma4", "instruct"),
     ModelSpec("gemma2-9b-base", "google/gemma-2-9b", "gemma2", "base"),
@@ -199,6 +201,12 @@ def run_one_model(
         "--temperature",
         str(args.temperature),
     ]
+    if args.device_map:
+        command.extend(["--device-map", args.device_map])
+    if args.max_memory:
+        command.extend(["--max-memory", args.max_memory])
+    if args.offload_folder:
+        command.extend(["--offload-folder", str(args.offload_folder)])
     if args.limit is not None:
         command.extend(["--limit", str(args.limit)])
     if args.trust_remote_code:
@@ -287,6 +295,12 @@ def run_one_model_temperatures(
         "--temperatures",
         ",".join(f"{temperature:g}" for temperature in temperatures),
     ]
+    if args.device_map:
+        command.extend(["--device-map", args.device_map])
+    if args.max_memory:
+        command.extend(["--max-memory", args.max_memory])
+    if args.offload_folder:
+        command.extend(["--offload-folder", str(args.offload_folder)])
     if args.limit is not None:
         command.extend(["--limit", str(args.limit)])
     if args.trust_remote_code:
@@ -378,6 +392,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16", choices=["auto", "float16", "bfloat16", "float32"])
+    parser.add_argument("--device-map", default=None, help="Optional Transformers device_map, e.g. auto.")
+    parser.add_argument(
+        "--max-memory",
+        default=None,
+        help="Optional comma list for device_map, e.g. 0=44GiB,1=44GiB,cpu=160GiB.",
+    )
+    parser.add_argument("--offload-folder", type=Path, default=None, help="Optional folder for unquantized CPU/disk offload.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures for one-pass multi-temperature audits.")
     parser.add_argument("--limit", type=int, default=None)
