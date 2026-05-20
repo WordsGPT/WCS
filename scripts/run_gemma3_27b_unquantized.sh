@@ -22,7 +22,7 @@ DEVICE_MAP="${DEVICE_MAP:-auto}"
 OFFLOAD_FOLDER="${OFFLOAD_FOLDER:-offload/gemma3-27b}"
 RESULTS_DIR="${RESULTS_DIR:-results/gemma3_27b_unquantized}"
 LOGS_DIR="${LOGS_DIR:-logs/gemma3_27b_unquantized}"
-RETRIES="${RETRIES:-1}"
+RETRIES="${RETRIES:-0}"
 LIMIT="${LIMIT:-}"
 
 log() {
@@ -152,7 +152,7 @@ install_dependencies() {
   log "Installing Python dependencies"
   python -m pip install --upgrade pip wheel packaging
   install_torch
-  python -m pip install --upgrade "transformers>=4.51.0,<6" accelerate sentencepiece protobuf safetensors "huggingface_hub[cli]"
+  python -m pip install --upgrade "transformers>=4.51.0,<5" accelerate sentencepiece protobuf safetensors "huggingface_hub[cli]"
 }
 
 hf_token_exists() {

@@ -61,3 +61,7 @@ logs/gemma3_27b_unquantized/
 
 The same command is resumable. If it stops, rerun it and completed outputs will
 be skipped.
+
+The default retry count is zero so real setup/model errors print immediately.
+Set `RETRIES=1 ./goCarlos` if you want one automatic retry after transient
+failures.

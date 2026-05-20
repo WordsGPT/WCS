@@ -241,6 +241,7 @@ def run_one_model(
             f"[fail] {model.slug}: return code {result.returncode}; see {log_path}",
             flush=True,
         )
+        print_log_tail(log_path)
         if STOP_REQUESTED:
             return None
         if attempt <= args.retries:
@@ -345,12 +346,23 @@ def run_one_model_temperatures(
             f"[fail] {model.slug}: return code {result.returncode}; see {log_path}",
             flush=True,
         )
+        print_log_tail(log_path)
         if STOP_REQUESTED:
             return None
         if attempt <= args.retries:
             time.sleep(args.retry_sleep_seconds)
 
     return None
+
+
+def print_log_tail(path: Path, lines: int = 80) -> None:
+    try:
+        rows = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return
+    print(f"[log-tail] last {min(lines, len(rows))} lines from {path}", flush=True)
+    for row in rows[-lines:]:
+        print(row, flush=True)
 
 
 def write_summaries(paths: list[Path], summary_path: Path, word_summary_path: Path) -> None:
