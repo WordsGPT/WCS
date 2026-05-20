@@ -9,15 +9,18 @@ cd WCS
 ```
 
 The script runs `google/gemma-3-27b-pt` with `bfloat16`, not 4-bit or 8-bit
-quantization. It uses Transformers `device_map=auto` with both GPUs capped by
-default:
+quantization. It creates a local virtual environment, installs dependencies,
+detects the available NVIDIA GPUs with `nvidia-smi`, and uses Transformers
+`device_map=auto` to shard the model across them.
+
+On two 48 GB GPUs, the detected memory setting will be approximately:
 
 ```bash
 MAX_MEMORY=0=44GiB,1=44GiB,cpu=160GiB
 ```
 
-That shards the unquantized model across GPU 0 and GPU 1, with CPU offload
-available if needed.
+CPU offload remains available if needed. You can still override any setting
+inline, but the default path should be just `./goCarlos`.
 
 If Hugging Face access is gated, authenticate first:
 
@@ -42,6 +45,12 @@ If the GPU has more or less VRAM, adjust the memory cap:
 
 ```bash
 MAX_MEMORY=0=70GiB,1=70GiB,cpu=160GiB ./goCarlos
+```
+
+Skip dependency installation if the environment is already prepared:
+
+```bash
+INSTALL_DEPS=0 ./goCarlos
 ```
 
 Outputs:
