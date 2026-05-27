@@ -53,8 +53,10 @@ The script writes:
 | `results/frequency_wcs/audit.<model>.jsonl` | Forced-path audit rows. |
 | `results/frequency_wcs/wcs_summary.csv` | Context-level WCS by decoder/parameter. |
 | `results/frequency_wcs/wcs_word_summary.csv` | Word-level any/all WCS by decoder/parameter. |
-| `results/frequency_wcs/per_word_wcs.csv` | Per-word mean WCS by model plus `ALL_MODELS`. |
-| `results/frequency_wcs/frequency_correlations.csv` | Pearson/Spearman correlations against rank and log count. |
+| `results/frequency_wcs/per_word_wcs.csv` | Per-word mean WCS by model plus `ALL_MODELS`, including target-token counts. |
+| `results/frequency_wcs/frequency_correlations.csv` | Pearson/Spearman correlations against rank, log count, and token count. |
+| `results/frequency_wcs/plots/wcs_vs_avg_token_count.first_100_words.png` | Pooled WCS vs average token count across models for the first 100 sampled words. |
+| `results/frequency_wcs/plots/wcs_vs_token_count.<model>.first_100_words.png` | Per-model WCS vs target-token count for the first 100 sampled words. |
 
 The run is resumable. Existing complete audit files are skipped by
 `scripts/run_model_suite.py`; sample-building checkpoints live next to the
@@ -65,6 +67,27 @@ Useful overrides:
 ```bash
 MODELS=gemma2-9b-base,gemma3-12b-it,mistral7b-v03-base,qwen25-14b-base \
 DTYPE=float16 \
+TOKEN_PLOT_WORD_LIMIT=100 \
 CORPUS=/path/to/corpus \
 scripts/run_frequency_wcs_experiment.sh
 ```
+
+Set `TOKEN_PLOT_WORD_LIMIT=0` to plot all sampled target words after the first
+100-word check looks reasonable.
+
+## Existing 100-word Tokenization Check
+
+For the already-built 100-word sample, use the standalone tokenization plotter
+against existing audit JSONL files:
+
+```bash
+python scripts/plot_tokenization_wcs.py \
+  --samples data/processed/samples.jsonl \
+  --output-dir results/tokenization_wcs_100 \
+  --word-limit 100 \
+  results
+```
+
+This writes `tokenization_wcs.first_100_words.csv`, token-count correlations,
+one pooled WCS-vs-average-token-count plot, and one per-model WCS-vs-token-count
+plot for each audited model.

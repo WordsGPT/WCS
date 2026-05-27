@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Summarize per-word WCS and correlations with frequency/tokenization measures."""
+"""Plot WCS against target-word token counts for an existing audit set."""
 
 from __future__ import annotations
 
@@ -39,32 +39,43 @@ def iter_audit_paths(paths: Iterable[Path]) -> list[Path]:
     return audit_paths
 
 
-def load_sample_metadata(samples_path: Path) -> dict[str, dict[str, object]]:
+def load_word_metadata(samples_path: Path) -> dict[str, dict[str, object]]:
     metadata: dict[str, dict[str, object]] = {}
-    word_order = 0
+    order = 0
     with samples_path.open("r", encoding="utf-8") as handle:
         for line in handle:
             if not line.strip():
                 continue
             row = json.loads(line)
             word = str(row["word"])
-            sample_metadata = row.get("metadata", {})
-            count = row.get("count")
             if word not in metadata:
-                word_order += 1
+                order += 1
                 metadata[word] = {
+                    "sample_order": order,
                     "rank": int(row["rank"]),
-                    "count": int(count) if count is not None else None,
+                    "count": row.get("count"),
                     "sample_contexts": 0,
-                    "frequency_band": str(sample_metadata.get("stratum", "")),
-                    "sample_order": word_order,
                 }
             metadata[word]["sample_contexts"] = int(metadata[word]["sample_contexts"]) + 1
     return metadata
 
 
+def selected_words(metadata: dict[str, dict[str, object]], word_limit: int) -> set[str]:
+    words = [
+        word
+        for word, _row in sorted(
+            metadata.items(),
+            key=lambda item: int(item[1]["sample_order"]),
+        )
+    ]
+    if word_limit > 0:
+        words = words[:word_limit]
+    return set(words)
+
+
 def load_context_groups(
     audit_paths: Iterable[Path],
+    allowed_words: set[str],
     include_models: set[str] | None,
     exclude_models: set[str],
 ) -> dict[tuple[str, float, str, str], list[dict]]:
@@ -75,7 +86,10 @@ def load_context_groups(
                 if not line.strip():
                     continue
                 row = json.loads(line)
+                word = str(row["word"])
                 model = str(row["model"])
+                if word not in allowed_words:
+                    continue
                 if include_models is not None and model not in include_models:
                     continue
                 if model in exclude_models:
@@ -83,7 +97,7 @@ def load_context_groups(
                 key = (
                     model,
                     float(row.get("temperature", 1.0)),
-                    str(row["word"]),
+                    word,
                     str(row["sample_id"]),
                 )
                 groups[key].append(row)
@@ -92,15 +106,17 @@ def load_context_groups(
     return groups
 
 
-def context_checks(rows: list[dict], top_k: list[int], top_p: list[float], min_p: list[float]) -> list[bool]:
+def context_score(rows: list[dict], top_k: list[int], top_p: list[float], min_p: list[float]) -> float:
     checks: list[bool] = []
     checks.extend(word_survives_top_k(rows, k) for k in top_k)
     checks.extend(word_survives_top_p(rows, p) for p in top_p)
     checks.extend(word_survives_min_p(rows, p) for p in min_p)
-    return checks
+    if not checks:
+        return 0.0
+    return sum(1 for check in checks if check) / len(checks)
 
 
-def summarize_words(
+def summarize_tokenization(
     metadata: dict[str, dict[str, object]],
     groups: dict[tuple[str, float, str, str], list[dict]],
     top_k: list[int],
@@ -109,57 +125,63 @@ def summarize_words(
 ) -> list[dict[str, object]]:
     totals: dict[tuple[str, float, str], dict[str, float]] = defaultdict(
         lambda: {
-            "reachable_settings": 0.0,
-            "total_settings": 0.0,
-            "contexts_with_any": 0.0,
-            "evaluated_contexts": 0.0,
+            "wcs_sum": 0.0,
+            "contexts": 0.0,
             "token_count_sum": 0.0,
-            "token_count_contexts": 0.0,
         }
     )
     for (model, temperature, word, _sample_id), rows in groups.items():
         if word not in metadata:
             continue
-        checks = context_checks(rows, top_k, top_p, min_p)
-        if not checks:
-            continue
-        total = totals[(model, temperature, word)]
-        reachable = sum(1 for check in checks if check)
-        total["reachable_settings"] += reachable
-        total["total_settings"] += len(checks)
-        total["contexts_with_any"] += 1 if reachable else 0
-        total["evaluated_contexts"] += 1
-        token_count = rows[0].get("word_token_count")
-        total["token_count_sum"] += float(token_count if token_count is not None else len(rows))
-        total["token_count_contexts"] += 1
+        key = (model, temperature, word)
+        totals[key]["wcs_sum"] += context_score(rows, top_k, top_p, min_p)
+        totals[key]["contexts"] += 1
+        totals[key]["token_count_sum"] += float(rows[0].get("word_token_count", len(rows)))
 
     rows: list[dict[str, object]] = []
     for (model, temperature, word), values in sorted(totals.items()):
         word_metadata = metadata[word]
-        total_settings = values["total_settings"]
-        evaluated_contexts = values["evaluated_contexts"]
+        contexts = values["contexts"]
         rows.append(
             {
                 "model": model,
                 "temperature": temperature,
                 "word": word,
+                "sample_order": word_metadata["sample_order"],
                 "rank": word_metadata["rank"],
                 "count": word_metadata["count"],
-                "frequency_band": word_metadata["frequency_band"],
-                "sample_order": word_metadata["sample_order"],
                 "sample_contexts": word_metadata["sample_contexts"],
-                "evaluated_contexts": int(evaluated_contexts),
-                "mean_wcs": values["reachable_settings"] / total_settings if total_settings else 0.0,
-                "any_reachable_rate": values["contexts_with_any"] / evaluated_contexts if evaluated_contexts else 0.0,
-                "mean_token_count": (
-                    values["token_count_sum"] / values["token_count_contexts"]
-                    if values["token_count_contexts"]
-                    else 0.0
-                ),
-                "evaluated_context_settings": int(total_settings),
+                "evaluated_contexts": int(contexts),
+                "mean_wcs": values["wcs_sum"] / contexts if contexts else 0.0,
+                "mean_token_count": values["token_count_sum"] / contexts if contexts else 0.0,
             }
         )
     return rows
+
+
+def add_average_token_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    by_word: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in rows:
+        by_word[str(row["word"])].append(row)
+
+    aggregate_rows: list[dict[str, object]] = []
+    for word, word_rows in sorted(by_word.items()):
+        first = word_rows[0]
+        aggregate_rows.append(
+            {
+                "model": "ALL_MODELS",
+                "temperature": "",
+                "word": word,
+                "sample_order": first["sample_order"],
+                "rank": first["rank"],
+                "count": first["count"],
+                "sample_contexts": first["sample_contexts"],
+                "evaluated_contexts": sum(int(row["evaluated_contexts"]) for row in word_rows),
+                "mean_wcs": sum(float(row["mean_wcs"]) for row in word_rows) / len(word_rows),
+                "mean_token_count": sum(float(row["mean_token_count"]) for row in word_rows) / len(word_rows),
+            }
+        )
+    return rows + aggregate_rows
 
 
 def pearson(xs: list[float], ys: list[float]) -> float | None:
@@ -196,66 +218,27 @@ def spearman(xs: list[float], ys: list[float]) -> float | None:
     return pearson(average_ranks(xs), average_ranks(ys))
 
 
-def add_aggregate_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    by_word: dict[str, list[dict[str, object]]] = defaultdict(list)
+def correlation_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    grouped: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     for row in rows:
-        by_word[str(row["word"])].append(row)
+        grouped[(str(row["model"]), str(row["temperature"]))].append(row)
 
-    aggregate_rows: list[dict[str, object]] = []
-    for word, word_rows in sorted(by_word.items()):
-        first = word_rows[0]
-        aggregate_rows.append(
-            {
-                "model": "ALL_MODELS",
-                "temperature": "",
-                "word": word,
-                "rank": first["rank"],
-                "count": first["count"],
-                "frequency_band": first["frequency_band"],
-                "sample_order": first["sample_order"],
-                "sample_contexts": first["sample_contexts"],
-                "evaluated_contexts": sum(int(row["evaluated_contexts"]) for row in word_rows),
-                "mean_wcs": sum(float(row["mean_wcs"]) for row in word_rows) / len(word_rows),
-                "any_reachable_rate": sum(float(row["any_reachable_rate"]) for row in word_rows) / len(word_rows),
-                "mean_token_count": sum(float(row["mean_token_count"]) for row in word_rows) / len(word_rows),
-                "evaluated_context_settings": sum(int(row["evaluated_context_settings"]) for row in word_rows),
-            }
-        )
-    return rows + aggregate_rows
-
-
-def correlation_rows(word_rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    by_model_temperature: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
-    for row in word_rows:
-        by_model_temperature[(str(row["model"]), str(row["temperature"]))].append(row)
-
-    rows: list[dict[str, object]] = []
-    for (model, temperature), values in sorted(by_model_temperature.items()):
-        ranks = [float(row["rank"]) for row in values]
-        mean_wcs = [float(row["mean_wcs"]) for row in values]
-        token_counts = [float(row["mean_token_count"]) for row in values]
-        counts_and_wcs = [
-            (float(row["count"]), float(row["mean_wcs"]))
-            for row in values
-            if row["count"] not in ("", None) and float(row["count"]) > 0
-        ]
-        log_counts = [math.log10(count) for count, _wcs in counts_and_wcs]
-        count_wcs = [wcs for _count, wcs in counts_and_wcs]
-        rows.append(
+    output: list[dict[str, object]] = []
+    for (model, temperature), model_rows in sorted(grouped.items()):
+        token_counts = [float(row["mean_token_count"]) for row in model_rows]
+        mean_wcs = [float(row["mean_wcs"]) for row in model_rows]
+        output.append(
             {
                 "model": model,
                 "temperature": temperature,
-                "n_words": len(values),
+                "n_words": len(model_rows),
+                "mean_token_count": sum(token_counts) / len(token_counts) if token_counts else "",
                 "mean_wcs": sum(mean_wcs) / len(mean_wcs) if mean_wcs else "",
-                "rank_pearson": pearson(ranks, mean_wcs),
-                "rank_spearman": spearman(ranks, mean_wcs),
-                "log_count_pearson": pearson(log_counts, count_wcs),
-                "log_count_spearman": spearman(log_counts, count_wcs),
                 "token_count_pearson": pearson(token_counts, mean_wcs),
                 "token_count_spearman": spearman(token_counts, mean_wcs),
             }
         )
-    return rows
+    return output
 
 
 def slugify(value: str) -> str:
@@ -263,52 +246,32 @@ def slugify(value: str) -> str:
     return slug or "model"
 
 
-def first_n_word_rows(rows: list[dict[str, object]], word_limit: int) -> list[dict[str, object]]:
-    if word_limit <= 0:
-        return rows
-    words = [
-        word
-        for _order, word in sorted(
-            {
-                (int(row["sample_order"]), str(row["word"]))
-                for row in rows
-                if str(row["model"]) != "ALL_MODELS"
-            }
-        )
-    ][:word_limit]
-    allowed = set(words)
-    return [row for row in rows if str(row["word"]) in allowed]
-
-
-def plot_tokenization_wcs(rows: list[dict[str, object]], plot_dir: Path, word_limit: int = 100) -> list[Path]:
+def plot_rows(rows: list[dict[str, object]], plot_dir: Path, label: str) -> list[Path]:
     try:
         import matplotlib.pyplot as plt
     except ImportError as exc:
-        raise RuntimeError("matplotlib is required for tokenization plots") from exc
-
-    plot_rows = first_n_word_rows(rows, word_limit)
-    if not plot_rows:
-        return []
+        raise RuntimeError("matplotlib is required for plotting") from exc
 
     plot_dir.mkdir(parents=True, exist_ok=True)
     output_paths: list[Path] = []
-    suffix = f"first_{word_limit}_words" if word_limit > 0 else "all_words"
 
-    aggregate_rows = [row for row in plot_rows if str(row["model"]) == "ALL_MODELS"]
+    aggregate_rows = [row for row in rows if str(row["model"]) == "ALL_MODELS"]
     if aggregate_rows:
-        output_path = plot_dir / f"wcs_vs_avg_token_count.{suffix}.png"
+        output_path = plot_dir / f"wcs_vs_avg_token_count.{label}.png"
         make_scatter(
+            plt,
             aggregate_rows,
             output_path,
-            title=f"WCS vs average token count ({suffix.replace('_', ' ')})",
+            title=f"WCS vs average token count ({label.replace('_', ' ')})",
             x_label="Average target-token count across models",
         )
         output_paths.append(output_path)
 
-    for model in sorted({str(row["model"]) for row in plot_rows if str(row["model"]) != "ALL_MODELS"}):
-        model_rows = [row for row in plot_rows if str(row["model"]) == model]
-        output_path = plot_dir / f"wcs_vs_token_count.{slugify(model)}.{suffix}.png"
+    for model in sorted({str(row["model"]) for row in rows if str(row["model"]) != "ALL_MODELS"}):
+        model_rows = [row for row in rows if str(row["model"]) == model]
+        output_path = plot_dir / f"wcs_vs_token_count.{slugify(model)}.{label}.png"
         make_scatter(
+            plt,
             model_rows,
             output_path,
             title=f"WCS vs token count: {model}",
@@ -319,13 +282,12 @@ def plot_tokenization_wcs(rows: list[dict[str, object]], plot_dir: Path, word_li
     return output_paths
 
 
-def make_scatter(rows: list[dict[str, object]], output_path: Path, title: str, x_label: str) -> None:
-    import matplotlib.pyplot as plt
-
+def make_scatter(plt: object, rows: list[dict[str, object]], output_path: Path, title: str, x_label: str) -> None:
     xs = [float(row["mean_token_count"]) for row in rows]
     ys = [float(row["mean_wcs"]) for row in rows]
     ranks = [float(row["rank"]) for row in rows]
     correlation = spearman(xs, ys)
+
     plt.figure(figsize=(7.5, 5.2))
     scatter = plt.scatter(xs, ys, c=ranks, cmap="viridis_r", alpha=0.78, s=34, edgecolors="none")
     plt.xlabel(x_label)
@@ -360,21 +322,15 @@ def write_csv(rows: list[dict[str, object]], output_path: Path, fieldnames: list
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="+", type=Path, help="Audit JSONL files or directories containing them.")
-    parser.add_argument("--samples", type=Path, default=ROOT / "data/processed/samples.frequency_1k.jsonl")
-    parser.add_argument("--per-word-output", type=Path, default=ROOT / "results/frequency_wcs/per_word_wcs.csv")
-    parser.add_argument("--correlation-output", type=Path, default=ROOT / "results/frequency_wcs/frequency_correlations.csv")
-    parser.add_argument("--plot-dir", type=Path, default=None, help="Optional directory for WCS-vs-tokenization plots.")
-    parser.add_argument(
-        "--token-plot-word-limit",
-        type=int,
-        default=100,
-        help="Limit tokenization plots to the first N sampled target words. Use 0 for all words.",
-    )
+    parser.add_argument("--samples", type=Path, default=ROOT / "data/processed/samples.jsonl")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "results/tokenization_wcs_100")
+    parser.add_argument("--word-limit", type=int, default=100, help="Use the first N sampled target words; 0 means all words.")
     parser.add_argument("--top-k", default=",".join(str(value) for value in DEFAULT_TOP_K))
     parser.add_argument("--top-p", default=",".join(str(value) for value in DEFAULT_TOP_P))
     parser.add_argument("--min-p", default=",".join(str(value) for value in DEFAULT_MIN_P))
     parser.add_argument("--include-model", action="append", default=None)
     parser.add_argument("--exclude-model", action="append", default=[])
+    parser.add_argument("--no-plots", action="store_true")
     return parser.parse_args()
 
 
@@ -384,64 +340,66 @@ def main() -> None:
     if not audit_paths:
         raise SystemExit("No audit*.jsonl files found in the provided paths.")
 
-    metadata = load_sample_metadata(args.samples)
+    metadata = load_word_metadata(args.samples)
+    words = selected_words(metadata, args.word_limit)
     groups = load_context_groups(
         audit_paths,
+        allowed_words=words,
         include_models=set(args.include_model) if args.include_model else None,
         exclude_models=set(args.exclude_model),
     )
-    per_model_rows = summarize_words(
+    per_model_rows = summarize_tokenization(
         metadata=metadata,
         groups=groups,
         top_k=parse_number_list(args.top_k, int),
         top_p=parse_number_list(args.top_p, float),
         min_p=parse_number_list(args.min_p, float),
     )
-    word_rows = add_aggregate_rows(per_model_rows)
-    correlations = correlation_rows(word_rows)
+    rows = add_average_token_rows(per_model_rows)
+    correlations = correlation_rows(rows)
 
-    per_word_fields = [
-        "model",
-        "temperature",
-        "word",
-        "rank",
-        "count",
-        "frequency_band",
-        "sample_order",
-        "sample_contexts",
-        "evaluated_contexts",
-        "mean_wcs",
-        "any_reachable_rate",
-        "mean_token_count",
-        "evaluated_context_settings",
-    ]
-    correlation_fields = [
-        "model",
-        "temperature",
-        "n_words",
-        "mean_wcs",
-        "rank_pearson",
-        "rank_spearman",
-        "log_count_pearson",
-        "log_count_spearman",
-        "token_count_pearson",
-        "token_count_spearman",
-    ]
-    write_csv(word_rows, args.per_word_output, per_word_fields)
-    write_csv(correlations, args.correlation_output, correlation_fields)
-    plot_paths: list[Path] = []
-    if args.plot_dir is not None:
-        plot_paths = plot_tokenization_wcs(
-            word_rows,
-            plot_dir=args.plot_dir,
-            word_limit=args.token_plot_word_limit,
-        )
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    word_label = f"first_{args.word_limit}_words" if args.word_limit > 0 else "all_words"
+    per_word_output = args.output_dir / f"tokenization_wcs.{word_label}.csv"
+    correlation_output = args.output_dir / f"tokenization_wcs_correlations.{word_label}.csv"
+    write_csv(
+        rows,
+        per_word_output,
+        [
+            "model",
+            "temperature",
+            "word",
+            "sample_order",
+            "rank",
+            "count",
+            "sample_contexts",
+            "evaluated_contexts",
+            "mean_wcs",
+            "mean_token_count",
+        ],
+    )
+    write_csv(
+        correlations,
+        correlation_output,
+        [
+            "model",
+            "temperature",
+            "n_words",
+            "mean_token_count",
+            "mean_wcs",
+            "token_count_pearson",
+            "token_count_spearman",
+        ],
+    )
+
     print(f"Audit files: {len(audit_paths)}")
+    print(f"Selected words: {len(words)}")
     print(f"Per-model word rows: {len(per_model_rows)}")
-    print(f"Wrote per-word WCS: {args.per_word_output}")
-    print(f"Wrote correlations: {args.correlation_output}")
-    for output_path in plot_paths:
-        print(f"Wrote tokenization plot: {output_path}")
+    print(f"Wrote tokenization WCS: {per_word_output}")
+    print(f"Wrote tokenization correlations: {correlation_output}")
+    if not args.no_plots:
+        for output_path in plot_rows(rows, args.output_dir / "plots", word_label):
+            print(f"Wrote plot: {output_path}")
 
 
 if __name__ == "__main__":

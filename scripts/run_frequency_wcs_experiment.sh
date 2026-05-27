@@ -16,6 +16,7 @@ CONTEXT_TOKENS="${CONTEXT_TOKENS:-256}"
 SEED="${SEED:-20260527}"
 MIN_WORD_LENGTH="${MIN_WORD_LENGTH:-3}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
+TOKEN_PLOT_WORD_LIMIT="${TOKEN_PLOT_WORD_LIMIT:-100}"
 
 if [[ -z "$CORPUS" ]]; then
   echo "Set CORPUS to a local text corpus path before running this script." >&2
@@ -67,6 +68,8 @@ fi
   --samples "$SAMPLES" \
   --per-word-output "$OUTPUT_DIR/per_word_wcs.csv" \
   --correlation-output "$OUTPUT_DIR/frequency_correlations.csv" \
+  --plot-dir "$OUTPUT_DIR/plots" \
+  --token-plot-word-limit "$TOKEN_PLOT_WORD_LIMIT" \
   "${audit_paths[@]}"
 
 echo "[done] frequency WCS outputs are in $OUTPUT_DIR"
