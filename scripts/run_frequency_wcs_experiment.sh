@@ -19,15 +19,15 @@ FORCE_REBUILD="${FORCE_REBUILD:-0}"
 TOKEN_PLOT_WORD_LIMIT="${TOKEN_PLOT_WORD_LIMIT:-100}"
 SKIP_COHERENCE_CHECK="${SKIP_COHERENCE_CHECK:-1}"
 
-if [[ -z "$CORPUS" ]]; then
-  echo "Set CORPUS to a local text corpus path before running this script." >&2
-  echo "Example: CORPUS=/data/pg19/test $0" >&2
-  exit 2
-fi
-
 mkdir -p "$OUTPUT_DIR" "$LOG_DIR"
 
 if [[ "$FORCE_REBUILD" == "1" || ! -s "$SAMPLES" ]]; then
+  if [[ -z "$CORPUS" ]]; then
+    echo "Set CORPUS to a local text corpus path before building samples." >&2
+    echo "Example: CORPUS=/data/pg19/test $0" >&2
+    echo "If $SAMPLES already exists, CORPUS is not needed." >&2
+    exit 2
+  fi
   build_command=(
     "$PYTHON_BIN" -u scripts/build_stratified_frequency_samples.py
     --frequency "$FREQUENCY"
