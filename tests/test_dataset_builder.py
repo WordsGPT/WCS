@@ -137,6 +137,26 @@ class DatasetBuilderTest(unittest.TestCase):
         self.assertFalse(missing)
         self.assertTrue(all(len(sample.word) >= 8 for sample in samples))
 
+    def test_build_samples_can_skip_coherence_check(self) -> None:
+        with patch("wcs.dataset_builder.is_text_coherent") as coherent:
+            samples, missing = build_samples(
+                frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
+                corpus_path=FIXTURES / "pg19_sample",
+                rank_min=3,
+                rank_max=8,
+                sample_size=4,
+                context_tokens=5,
+                seed=7,
+                min_word_length=3,
+                contexts_per_word=1,
+                skip_coherence_check=True,
+            )
+
+        coherent.assert_not_called()
+        self.assertFalse(missing)
+        self.assertEqual(len(samples), 4)
+        self.assertTrue(all(sample.metadata["skip_coherence_check"] == 1 for sample in samples))
+
     def test_build_samples_can_filter_by_dictionary(self) -> None:
         with patch("wcs.dataset_builder.is_text_coherent", return_value=True):
             samples, missing = build_samples(

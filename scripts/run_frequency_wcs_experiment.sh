@@ -17,6 +17,7 @@ SEED="${SEED:-20260527}"
 MIN_WORD_LENGTH="${MIN_WORD_LENGTH:-3}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
 TOKEN_PLOT_WORD_LIMIT="${TOKEN_PLOT_WORD_LIMIT:-100}"
+SKIP_COHERENCE_CHECK="${SKIP_COHERENCE_CHECK:-1}"
 
 if [[ -z "$CORPUS" ]]; then
   echo "Set CORPUS to a local text corpus path before running this script." >&2
@@ -27,17 +28,23 @@ fi
 mkdir -p "$OUTPUT_DIR" "$LOG_DIR"
 
 if [[ "$FORCE_REBUILD" == "1" || ! -s "$SAMPLES" ]]; then
-  "$PYTHON_BIN" -u scripts/build_stratified_frequency_samples.py \
-    --frequency "$FREQUENCY" \
-    --corpus "$CORPUS" \
-    --output "$SAMPLES" \
-    --strata "$STRATA" \
-    --contexts-per-word "$CONTEXTS_PER_WORD" \
-    --context-tokens "$CONTEXT_TOKENS" \
-    --seed "$SEED" \
-    --min-word-length "$MIN_WORD_LENGTH" \
-    --exclude-capitalized-matches \
+  build_command=(
+    "$PYTHON_BIN" -u scripts/build_stratified_frequency_samples.py
+    --frequency "$FREQUENCY"
+    --corpus "$CORPUS"
+    --output "$SAMPLES"
+    --strata "$STRATA"
+    --contexts-per-word "$CONTEXTS_PER_WORD"
+    --context-tokens "$CONTEXT_TOKENS"
+    --seed "$SEED"
+    --min-word-length "$MIN_WORD_LENGTH"
+    --exclude-capitalized-matches
     --resume
+  )
+  if [[ "$SKIP_COHERENCE_CHECK" == "1" ]]; then
+    build_command+=(--skip-coherence-check)
+  fi
+  "${build_command[@]}"
 else
   echo "[samples] using existing $SAMPLES"
 fi

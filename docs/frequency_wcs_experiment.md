@@ -61,6 +61,10 @@ The script writes:
 The run is resumable. Existing complete audit files are skipped by
 `scripts/run_model_suite.py`; sample-building checkpoints live next to the
 sample output under `data/processed/samples.frequency_1k.checkpoints/`.
+By default, `scripts/run_frequency_wcs_experiment.sh` sets
+`SKIP_COHERENCE_CHECK=1`, so sample construction accepts raw corpus contexts
+without the slow coherence filter. Set `SKIP_COHERENCE_CHECK=0` to restore the
+filter.
 
 Useful overrides:
 
@@ -74,6 +78,10 @@ scripts/run_frequency_wcs_experiment.sh
 
 Set `TOKEN_PLOT_WORD_LIMIT=0` to plot all sampled target words after the first
 100-word check looks reasonable.
+
+If `data/processed/samples.frequency_1k.jsonl` was already built elsewhere,
+copy it to the server and run the same script. The sample-build step will be
+skipped automatically because `SAMPLES` already exists.
 
 ## Existing 100-word Tokenization Check
 

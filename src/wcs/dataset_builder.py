@@ -373,6 +373,7 @@ def build_samples(
     checkpoint_path: Path | None = None,
     progress_interval: int = 0,
     resume: bool = False,
+    skip_coherence_check: bool = False,
 ) -> tuple[list[Sample], list[FrequencyEntry]]:
     entries = load_frequency_entries(frequency_path)
     allowed_words = load_dictionary(dictionary_path) if dictionary_path else None
@@ -464,7 +465,7 @@ def build_samples(
             if len(word_samples) >= contexts_per_word:
                 break
 
-            if not is_text_coherent(
+            if not skip_coherence_check and not is_text_coherent(
                 occurrence.raw_excerpt,
                 model=coherence_model,
                 language=normalize_language(language),
@@ -496,6 +497,7 @@ def build_samples(
                         "dictionary": str(dictionary_path) if dictionary_path else "",
                         "contexts_per_word": contexts_per_word,
                         "coherence_model": coherence_model,
+                        "skip_coherence_check": int(skip_coherence_check),
                         "language": normalize_language(language),
                     },
                 )
@@ -571,6 +573,11 @@ def parse_args() -> argparse.Namespace:
         help="Gemini model to use for the required coherence check.",
     )
     parser.add_argument(
+        "--skip-coherence-check",
+        action="store_true",
+        help="Accept raw corpus contexts without language/coherence filtering.",
+    )
+    parser.add_argument(
         "--language",
         default="English",
         help="Language name or code for the coherence prompt, for example English or Spanish.",
@@ -608,6 +615,7 @@ def main() -> None:
         checkpoint_path=args.output,
         progress_interval=args.progress_interval,
         resume=args.resume,
+        skip_coherence_check=args.skip_coherence_check,
     )
     write_jsonl(samples, args.output)
     print(f"Wrote {len(samples)} samples to {args.output}")

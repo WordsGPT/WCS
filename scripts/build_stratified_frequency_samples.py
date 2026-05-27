@@ -83,6 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dictionary", type=Path, default=None)
     parser.add_argument("--exclude-capitalized-matches", action="store_true")
     parser.add_argument("--coherence-model", default=DEFAULT_GEMINI_MODEL)
+    parser.add_argument("--skip-coherence-check", action="store_true")
     parser.add_argument("--language", default="English")
     parser.add_argument("--progress-interval", type=int, default=25)
     parser.add_argument("--resume", action="store_true", help="Resume per-stratum checkpoints if present.")
@@ -122,6 +123,7 @@ def main() -> None:
             checkpoint_path=checkpoint,
             progress_interval=args.progress_interval,
             resume=args.resume,
+            skip_coherence_check=args.skip_coherence_check,
         )
         all_missing += len(missing)
         for sample in samples:
