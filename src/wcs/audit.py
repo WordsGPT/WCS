@@ -309,7 +309,7 @@ def load_hf_model_and_tokenizer(
     offload_folder: str | None = None,
 ) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
 
     if trust_remote_code:
         patch_transformers_remote_code_compatibility()
@@ -324,7 +324,7 @@ def load_hf_model_and_tokenizer(
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=trust_remote_code)
     model_kwargs: dict[str, Any] = {
-        "torch_dtype": torch_dtype,
+        "dtype": torch_dtype,
         "trust_remote_code": trust_remote_code,
     }
     if device_map:
@@ -335,7 +335,22 @@ def load_hf_model_and_tokenizer(
     if offload_folder:
         model_kwargs["offload_folder"] = offload_folder
 
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+    def from_pretrained(model_class: Any, kwargs: dict[str, Any]) -> Any:
+        try:
+            return model_class.from_pretrained(model_name, **kwargs)
+        except TypeError as error:
+            if "dtype" not in str(error) or "dtype" not in kwargs:
+                raise
+            legacy_kwargs = dict(kwargs)
+            legacy_kwargs["torch_dtype"] = legacy_kwargs.pop("dtype")
+            return model_class.from_pretrained(model_name, **legacy_kwargs)
+
+    try:
+        model = from_pretrained(AutoModelForCausalLM, model_kwargs)
+    except ValueError as error:
+        if "Unrecognized configuration class" not in str(error):
+            raise
+        model = from_pretrained(AutoModel, model_kwargs)
     if not device_map:
         model.to(device)
     model.eval()
