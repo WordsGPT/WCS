@@ -128,6 +128,27 @@ python scripts/summarize_wcs.py \
 
 The summary CSV can be generated without plotting dependencies. Plot generation requires `matplotlib`.
 
+## Nemotron Tri-Mode Smoke Test
+
+NVIDIA's `nvidia/Nemotron-Labs-Diffusion-14B` exposes three inference modes:
+autoregressive, diffusion/dLM, and linear self-speculation. Use the dedicated
+runner to compare those execution modes on the same prompt:
+
+```bash
+python scripts/run_nemotron_tri_mode_test.py \
+  --model nvidia/Nemotron-Labs-Diffusion-14B \
+  --mode all \
+  --max-new-tokens 128 \
+  --block-length 32 \
+  --threshold 0.9 \
+  --dtype bfloat16 \
+  --output results/nemotron_tri_mode.jsonl
+```
+
+This is separate from the WCS forced-path audit. WCS summarizes top-k, top-p,
+and min-p token reachability from next-token logits; the Nemotron runner tests
+the model's AR, diffusion, and self-speculation generation APIs directly.
+
 ## Resumable Model Suite
 
 For long unattended GPU runs, use the resumable suite runner. It runs one
