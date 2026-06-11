@@ -311,6 +311,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aggregate WCS audit JSONL files.")
     parser.add_argument("--audits", type=Path, nargs="+", required=True)
     parser.add_argument("--summary", type=Path, default=Path("results/wcs_summary.csv"))
+    parser.add_argument("--word-summary", type=Path, default=None)
     parser.add_argument("--plot-dir", type=Path, default=None)
     parser.add_argument("--top-k", default=",".join(str(v) for v in DEFAULT_TOP_K))
     parser.add_argument("--top-p", default=",".join(str(v) for v in DEFAULT_TOP_P))
@@ -320,14 +321,29 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    top_k_values = parse_number_list(args.top_k, int)
+    top_p_values = parse_number_list(args.top_p, float)
+    min_p_values = parse_number_list(args.min_p, float)
+
     summaries = summarize_wcs(
         audit_paths=args.audits,
-        top_k_values=parse_number_list(args.top_k, int),
-        top_p_values=parse_number_list(args.top_p, float),
-        min_p_values=parse_number_list(args.min_p, float),
+        top_k_values=top_k_values,
+        top_p_values=top_p_values,
+        min_p_values=min_p_values,
     )
     write_summary_csv(summaries, args.summary)
     print(f"Wrote WCS summary to {args.summary}")
+
+    if args.word_summary is not None:
+        word_summaries = summarize_wcs_by_target_word(
+            audit_paths=args.audits,
+            top_k_values=top_k_values,
+            top_p_values=top_p_values,
+            min_p_values=min_p_values,
+        )
+        write_word_summary_csv(word_summaries, args.word_summary)
+        print(f"Wrote word-level WCS summary to {args.word_summary}")
+
     if args.plot_dir is not None:
         output_paths = plot_summary(args.summary, args.plot_dir)
         for output_path in output_paths:
