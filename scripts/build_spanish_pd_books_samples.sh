@@ -4,6 +4,7 @@ set -euo pipefail
 PYTHON_BIN="${PYTHON_BIN:-python}"
 PD_OUTPUT="${PD_OUTPUT:-data/processed/spanish_pd_books}"
 SAMPLES="${SAMPLES:-data/processed/samples.spanish_pd_books.100x10.jsonl}"
+COHERENCE_LOG="${COHERENCE_LOG:-data/processed/spanish_pd_books.coherence.jsonl}"
 FREQUENCY="${FREQUENCY:-data/raw/spanish_frequency.tsv}"
 FREQUENCY_SHARDS="${FREQUENCY_SHARDS:-0}"
 CONTEXT_SHARDS="${CONTEXT_SHARDS:-4}"
@@ -44,6 +45,7 @@ build_command=(
   --candidate-contexts-per-word "$CANDIDATE_CONTEXTS_PER_WORD"
   --coherence-workers "$COHERENCE_WORKERS"
   --coherence-model "$COHERENCE_MODEL"
+  --coherence-log "$COHERENCE_LOG"
   --context-tokens "$CONTEXT_TOKENS"
   --seed "$SEED"
   --min-word-length 4

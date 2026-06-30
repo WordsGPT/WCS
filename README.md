@@ -110,6 +110,15 @@ CONTEXT_SHARDS=6 \
 scripts/build_spanish_pd_books_samples.sh
 ```
 
+Every Gemini context decision is written to
+`data/processed/spanish_pd_books.coherence.jsonl` with its reason, short
+explanation, exact excerpt, and source location. Summarize rejection causes and
+inspect examples with:
+
+```bash
+python scripts/summarize_context_rejections.py
+```
+
 To derive frequencies from separate PD Books shards instead, set
 `FREQUENCY_SHARDS` and point `FREQUENCY` at the generated file:
 

@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from wcs.dataset_builder import (
     _parse_coherence_response,
+    ContextDecision,
     build_samples,
     index_corpus_occurrences,
     load_frequency_entries,
@@ -329,6 +330,51 @@ class DatasetBuilderTest(unittest.TestCase):
         self.assertFalse(missing)
         self.assertEqual({sample.word for sample in samples}, {"válido"})
         validate.assert_called_once()
+
+    def test_build_samples_writes_detailed_coherence_log(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            frequency = root / "frequency.tsv"
+            frequency.write_text("1\tobjetivo\t3\n", encoding="utf-8")
+            corpus = root / "book.txt"
+            corpus.write_text(
+                "uno dos tres cuatro cinco objetivo. "
+                "seis siete ocho nueve diez objetivo.",
+                encoding="utf-8",
+            )
+            log_path = root / "coherence.jsonl"
+
+            def detailed(texts: list[str], **_: object) -> list[ContextDecision]:
+                return [
+                    ContextDecision(True, "accepted", "Natural continuation."),
+                    ContextDecision(False, "ocr_corruption", "Broken scan text."),
+                ][: len(texts)]
+
+            with (
+                patch("wcs.dataset_builder._gemini_api_key", return_value="test-key"),
+                patch(
+                    "wcs.dataset_builder.validate_contexts_with_gemini_detailed",
+                    side_effect=detailed,
+                ),
+            ):
+                samples, _missing = build_samples(
+                    frequency_path=frequency,
+                    corpus_path=corpus,
+                    rank_min=1,
+                    rank_max=1,
+                    sample_size=1,
+                    context_tokens=5,
+                    seed=7,
+                    contexts_per_word=1,
+                    candidate_contexts_per_word=2,
+                    coherence_log_path=log_path,
+                )
+            rows = [json.loads(line) for line in log_path.read_text().splitlines()]
+
+        self.assertEqual(len(samples), 1)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1]["reason"], "ocr_corruption")
+        self.assertIn("excerpt", rows[1])
 
 
 if __name__ == "__main__":
