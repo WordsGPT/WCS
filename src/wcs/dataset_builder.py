@@ -28,6 +28,7 @@ DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
 DEFAULT_COHERENCE_WORKERS = 4
 DEFAULT_CANDIDATE_CONTEXTS_PER_WORD = 40
 DEFAULT_CANDIDATE_POOL_MULTIPLIER = 5
+DEFAULT_TARGET_WORD_BATCH_SIZE = 50
 LANGUAGE_NAMES = {
     "en": "English",
     "es": "Spanish",
@@ -123,31 +124,29 @@ def _parse_coherence_response(response: dict[str, object], expected: int) -> lis
         )
     if len(accepted) < expected:
         print(
-            f"Warning: Gemini returned {len(accepted)}/{expected} coherence "
+            f"Warning: Gemini returned {len(accepted)}/{expected} classification "
             "decisions; treating omitted decisions as rejected.",
             flush=True,
         )
         return accepted + [False] * (expected - len(accepted))
     if len(accepted) > expected:
         print(
-            f"Warning: Gemini returned {len(accepted)}/{expected} coherence "
+            f"Warning: Gemini returned {len(accepted)}/{expected} classification "
             "decisions; ignoring extras.",
             flush=True,
         )
     return accepted[:expected]
 
 
-def validate_contexts_with_gemini(
-    texts: Sequence[str],
+def _gemini_boolean_classification(
+    prompt: str,
+    expected: int,
     *,
-    target_word: str,
     model: str = DEFAULT_GEMINI_MODEL,
-    language: str = "English",
     timeout_seconds: float = 60.0,
     max_attempts: int = 5,
 ) -> list[bool]:
-    """Validate several contexts for one target word in a single Gemini request."""
-    if not texts:
+    if expected == 0:
         return []
     api_key = _gemini_api_key()
     quoted_model = urllib.parse.quote(model, safe="")
@@ -155,19 +154,14 @@ def validate_contexts_with_gemini(
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{quoted_model}:generateContent"
     )
-    prompt = _coherence_prompt(
-        texts,
-        target_word=target_word,
-        language=normalize_language(language),
-    )
     response_schema = {
         "type": "OBJECT",
         "properties": {
             "accepted": {
                 "type": "ARRAY",
                 "items": {"type": "BOOLEAN"},
-                "minItems": len(texts),
-                "maxItems": len(texts),
+                "minItems": expected,
+                "maxItems": expected,
             }
         },
         "required": ["accepted"],
@@ -177,7 +171,7 @@ def validate_contexts_with_gemini(
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "temperature": 0.0,
-                "maxOutputTokens": max(64, len(texts) * 8),
+                "maxOutputTokens": max(64, expected * 8),
                 "responseMimeType": "application/json",
                 "responseSchema": response_schema,
                 "thinkingConfig": {"thinkingBudget": 0},
@@ -192,7 +186,7 @@ def validate_contexts_with_gemini(
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                 result = json.loads(response.read().decode("utf-8"))
-            return _parse_coherence_response(result, len(texts))
+            return _parse_coherence_response(result, expected)
         except urllib.error.HTTPError as exc:
             last_error = exc
             if exc.code != 429 and not 500 <= exc.code < 600:
@@ -206,6 +200,65 @@ def validate_contexts_with_gemini(
         if attempt < max_attempts - 1:
             time.sleep(delay)
     raise RuntimeError(f"Gemini coherence validation failed: {last_error}") from last_error
+
+
+def validate_contexts_with_gemini(
+    texts: Sequence[str],
+    *,
+    target_word: str,
+    model: str = DEFAULT_GEMINI_MODEL,
+    language: str = "English",
+    timeout_seconds: float = 60.0,
+    max_attempts: int = 5,
+) -> list[bool]:
+    """Validate several contexts for one target word in a single Gemini request."""
+    if not texts:
+        return []
+    prompt = _coherence_prompt(
+        texts,
+        target_word=target_word,
+        language=normalize_language(language),
+    )
+    return _gemini_boolean_classification(
+        prompt,
+        len(texts),
+        model=model,
+        timeout_seconds=timeout_seconds,
+        max_attempts=max_attempts,
+    )
+
+
+def validate_target_words_with_gemini(
+    words: Sequence[str],
+    *,
+    model: str = DEFAULT_GEMINI_MODEL,
+    language: str = "English",
+    timeout_seconds: float = 60.0,
+    max_attempts: int = 5,
+) -> list[bool]:
+    """Reject nonlexical target forms before searching the context corpus."""
+    if not words:
+        return []
+    normalized_language = normalize_language(language)
+    candidates = [{"id": index, "word": word} for index, word in enumerate(words)]
+    prompt = (
+        f"Classify each candidate as a valid standalone {normalized_language} lexical "
+        "word form. Accept standard dictionary words and valid inflected or conjugated "
+        "forms. Accept established loanwords only when they are genuinely used as "
+        f"{normalized_language}. Reject OCR-corrupted forms, misspellings, token "
+        "fragments, abbreviations, URLs, numbers, personal names, place names, "
+        "organization names, and words belonging only to another language. Return "
+        f"exactly {len(words)} booleans, one per candidate in the original order, "
+        "in the JSON field `accepted`.\n\n"
+        f"Candidates:\n{json.dumps(candidates, ensure_ascii=False)}"
+    )
+    return _gemini_boolean_classification(
+        prompt,
+        len(words),
+        model=model,
+        timeout_seconds=timeout_seconds,
+        max_attempts=max_attempts,
+    )
 
 
 @dataclass(frozen=True)
@@ -544,7 +597,11 @@ def build_samples(
     coherence_workers: int = DEFAULT_COHERENCE_WORKERS,
     candidate_contexts_per_word: int = DEFAULT_CANDIDATE_CONTEXTS_PER_WORD,
     candidate_pool_multiplier: int = DEFAULT_CANDIDATE_POOL_MULTIPLIER,
+    validate_target_words: bool = False,
+    target_word_batch_size: int = DEFAULT_TARGET_WORD_BATCH_SIZE,
 ) -> tuple[list[Sample], list[FrequencyEntry]]:
+    if coherence_workers < 1:
+        raise ValueError("coherence_workers must be at least 1")
     entries = load_frequency_entries(frequency_path)
     allowed_words = load_dictionary(dictionary_path) if dictionary_path else None
     selected = select_rank_band(
@@ -561,6 +618,39 @@ def build_samples(
     if sample_size > 0:
         candidate_pool_size = max(sample_size, sample_size * candidate_pool_multiplier)
         selected = selected[:candidate_pool_size]
+    if target_word_batch_size < 1:
+        raise ValueError("target_word_batch_size must be at least 1")
+    if validate_target_words:
+        _gemini_api_key()
+        batches = [
+            selected[start : start + target_word_batch_size]
+            for start in range(0, len(selected), target_word_batch_size)
+        ]
+
+        def validate_word_batch(batch: list[FrequencyEntry]) -> list[bool]:
+            return validate_target_words_with_gemini(
+                [entry.word for entry in batch],
+                model=coherence_model,
+                language=normalize_language(language),
+            )
+
+        with ThreadPoolExecutor(max_workers=coherence_workers) as executor:
+            batch_decisions = list(executor.map(validate_word_batch, batches))
+        lexical_rejections: list[FrequencyEntry] = []
+        lexically_valid: list[FrequencyEntry] = []
+        for batch, decisions in zip(batches, batch_decisions):
+            for entry, accepted in zip(batch, decisions):
+                if accepted:
+                    lexically_valid.append(entry)
+                else:
+                    lexical_rejections.append(entry)
+        selected = lexically_valid
+        if progress_interval > 0:
+            print(
+                f"Lexical filter kept {len(selected)} candidate words "
+                f"(rejected {len(lexical_rejections)} nonwords/names/artifacts)",
+                flush=True,
+            )
     corpus_files = list(iter_corpus_files(corpus_path))
     if not corpus_files:
         raise FileNotFoundError(f"No .txt or .text files found under {corpus_path}")
@@ -569,8 +659,6 @@ def build_samples(
     missing: list[FrequencyEntry] = []
     if contexts_per_word < 1:
         raise ValueError("contexts_per_word must be at least 1")
-    if coherence_workers < 1:
-        raise ValueError("coherence_workers must be at least 1")
     if candidate_contexts_per_word < contexts_per_word:
         raise ValueError(
             "candidate_contexts_per_word must be at least contexts_per_word"
@@ -723,6 +811,8 @@ def build_samples(
                                 candidate_contexts_per_word
                             ),
                             "candidate_pool_multiplier": candidate_pool_multiplier,
+                            "validate_target_words": int(validate_target_words),
+                            "target_word_batch_size": target_word_batch_size,
                             "coherence_model": coherence_model,
                             "coherence_workers": coherence_workers,
                             "skip_coherence_check": int(skip_coherence_check),
@@ -818,6 +908,20 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--validate-target-words",
+        action="store_true",
+        help=(
+            "Use Gemini to reject nonwords, names, abbreviations, and foreign-only "
+            "forms before searching the corpus."
+        ),
+    )
+    parser.add_argument(
+        "--target-word-batch-size",
+        type=int,
+        default=DEFAULT_TARGET_WORD_BATCH_SIZE,
+        help="Number of candidate target words classified in each Gemini request.",
+    )
+    parser.add_argument(
         "--skip-coherence-check",
         action="store_true",
         help="Accept raw corpus contexts without language/coherence filtering.",
@@ -869,6 +973,8 @@ def main() -> None:
         coherence_workers=args.coherence_workers,
         candidate_contexts_per_word=args.candidate_contexts_per_word,
         candidate_pool_multiplier=args.candidate_pool_multiplier,
+        validate_target_words=args.validate_target_words,
+        target_word_batch_size=args.target_word_batch_size,
     )
     write_jsonl(samples, args.output)
     accepted_words = len({sample.word for sample in samples})

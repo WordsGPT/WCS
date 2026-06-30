@@ -48,6 +48,7 @@ build_command=(
   --seed "$SEED"
   --min-word-length 4
   --language Spanish
+  --validate-target-words
   --exclude-capitalized-matches
   --progress-interval 1
   --require-full-sample

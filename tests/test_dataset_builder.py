@@ -287,6 +287,49 @@ class DatasetBuilderTest(unittest.TestCase):
             [True, False, True, False],
         )
 
+    def test_build_samples_can_validate_targets_before_context_lookup(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            frequency = root / "frequency.tsv"
+            frequency.write_text(
+                "1\tválido\t20\n2\trnagnet\t19\n",
+                encoding="utf-8",
+            )
+            corpus = root / "book.txt"
+            corpus.write_text(
+                ("uno dos tres cuatro cinco válido rnagnet " * 12),
+                encoding="utf-8",
+            )
+
+            def validate_words(words: list[str], **_: object) -> list[bool]:
+                return [word == "válido" for word in words]
+
+            with (
+                patch("wcs.dataset_builder._gemini_api_key", return_value="test-key"),
+                patch(
+                    "wcs.dataset_builder.validate_target_words_with_gemini",
+                    side_effect=validate_words,
+                ) as validate,
+            ):
+                samples, missing = build_samples(
+                    frequency_path=frequency,
+                    corpus_path=corpus,
+                    rank_min=1,
+                    rank_max=2,
+                    sample_size=1,
+                    context_tokens=5,
+                    seed=7,
+                    contexts_per_word=1,
+                    candidate_contexts_per_word=2,
+                    candidate_pool_multiplier=2,
+                    validate_target_words=True,
+                    skip_coherence_check=True,
+                )
+
+        self.assertFalse(missing)
+        self.assertEqual({sample.word for sample in samples}, {"válido"})
+        validate.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -49,6 +49,10 @@ contexts for each word to Gemini in one structured request. By default it uses
 requests concurrently. Adjust `--candidate-contexts-per-word` and
 `--coherence-workers` to match the API quota.
 
+For Spanish PD Books, the workflow first batches candidate targets through a
+lexical-validity check. This removes nonwords, OCR-like forms, names,
+abbreviations, and foreign-only tokens before the context corpus is scanned.
+
 Use `--resume` to continue appending to an existing output file. Resume preserves complete word groups and continues sample IDs from the checkpoint.
 
 Use `--exclude-capitalized-matches` for the paper dataset to reduce proper names and place names such as capitalized mythological, personal, or geographic references.
