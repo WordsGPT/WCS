@@ -623,14 +623,30 @@ def index_corpus_occurrences(
     sampling_rng = random.Random(sampling_seed)
     global_offset = 0
 
-    for path in sorted(corpus_files):
+    total_files = len(corpus_files)
+    print_interval = max(1, total_files // 10)
+
+    for idx, path in enumerate(sorted(corpus_files), start=1):
+        if total_files > 1 and (idx == 1 or idx % print_interval == 0 or idx == total_files):
+            print(
+                f"Indexing corpus: processed {idx}/{total_files} files "
+                f"({(idx / total_files) * 100:.1f}%)...",
+                flush=True,
+            )
         text = path.read_text(encoding="utf-8", errors="ignore")
         token_matches = list(WORD_RE.finditer(text))
         for token_index, match in enumerate(token_matches):
-            normalized = normalize_target_word(match.group(0))
-            if normalized not in words or token_index < context_tokens:
+            raw_word = match.group(0)
+            lowered = raw_word.lower()
+            if lowered in words:
+                normalized = lowered
+            else:
+                normalized = lowered.rstrip("'’-")
+                if normalized not in words:
+                    continue
+            if token_index < context_tokens:
                 continue
-            if exclude_capitalized_matches and match.group(0)[:1].isupper():
+            if exclude_capitalized_matches and raw_word[:1].isupper():
                 continue
             prefix_tokens = token_matches[token_index - context_tokens : token_index]
             raw_start = prefix_tokens[0].start()
@@ -640,7 +656,7 @@ def index_corpus_occurrences(
                 word=normalized,
                 prefix=prefix,
                 raw_excerpt=raw_excerpt,
-                matched_text=match.group(0),
+                matched_text=raw_word,
                 source_path=str(path),
                 match_start_char=match.start(),
                 match_end_char=match.end(),
@@ -893,6 +909,11 @@ def build_samples(
     ]:
         entry, search_start, occurrences = job
         candidates = occurrences[:candidate_contexts_per_word]
+        if not skip_coherence_check and progress_interval > 0:
+            print(
+                f"Checking coherence for {entry.word!r} with Gemini ({len(candidates)} contexts)...",
+                flush=True,
+            )
         if skip_coherence_check:
             decisions = [
                 ContextDecision(True, "accepted", "Coherence check skipped.")
