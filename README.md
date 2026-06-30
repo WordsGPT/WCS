@@ -45,7 +45,7 @@ For PG-19, point `--corpus` at a directory containing `.txt` files from the test
 number of accepted text contexts kept for each word. The builder first filters
 out words without enough raw corpus contexts, then submits several candidate
 contexts for each word to Gemini in one structured request. By default it uses
-`gemini-2.5-flash-lite`, sends 20 candidates per word, and runs four word-level
+`gemini-2.5-flash-lite`, sends 40 candidates per word, and runs four word-level
 requests concurrently. Adjust `--candidate-contexts-per-word` and
 `--coherence-workers` to match the API quota.
 
