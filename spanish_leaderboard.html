@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WCS Spanish Model Leaderboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    :root {
+      --bg: #09090b;
+      --bg-panel: rgba(24, 24, 27, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.5);
+      --base-color: #8b5cf6;
+      --instruct-color: #10b981;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+    }
+
+    header {
+      padding: 30px 40px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    h1 {
+      margin: 0;
+      font-weight: 800;
+      font-size: 32px;
+      background: linear-gradient(135deg, #fff, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .subhead {
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-left: 24px;
+      transition: color 0.2s;
+    }
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    main {
+      padding: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 40px;
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .controls {
+      align-self: start;
+      position: sticky;
+      top: 130px;
+    }
+
+    .control-group {
+      margin-bottom: 24px;
+    }
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-title {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 800;
+    }
+
+    .toggle-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .toggle-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: left;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .toggle-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+    }
+    .toggle-btn.active {
+      background: rgba(255,255,255,0.1);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 40px 200px 1fr 80px;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+      opacity: 0;
+      animation: slideIn 0.5s forwards;
+    }
+    
+    .row:hover {
+      transform: scale(1.02) translateX(4px);
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.2);
+      z-index: 10;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .rank {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .row:nth-child(1) .rank { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+    .row:nth-child(2) .rank { color: #94a3b8; }
+    .row:nth-child(3) .rank { color: #b45309; }
+
+    .model-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .model-name {
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge.base {
+      background: rgba(139, 92, 246, 0.15);
+      color: #c4b5fd;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .badge.instruct {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .bar-container {
+      width: 100%;
+      height: 24px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar {
+      height: 100%;
+      border-radius: 12px;
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+      width: 0%;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .bar::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+      animation: shimmer 2s infinite linear;
+      transform: skewX(-20deg);
+    }
+
+    @keyframes shimmer {
+      from { transform: translateX(-150%) skewX(-20deg); }
+      to { transform: translateX(150%) skewX(-20deg); }
+    }
+
+    .bar.base { background: linear-gradient(90deg, #7c3aed, #a78bfa); box-shadow: 0 0 10px rgba(124, 58, 237, 0.4); }
+    .bar.instruct { background: linear-gradient(90deg, #059669, #34d399); box-shadow: 0 0 10px rgba(5, 150, 105, 0.4); }
+
+    .score {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .controls { position: static; }
+      .row { grid-template-columns: 30px 120px 1fr 60px; gap: 12px; padding: 12px; }
+      .model-name { font-size: 13px; }
+      .score { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Spanish Model Leaderboard</h1>
+      <p class="subhead">Intelligent ranking based on semantic coverage.</p>
+    </div>
+    <nav>
+      <a href="index.html">Main Suite</a>
+      <a href="spanish_temperature.html">Temperature View</a>
+    </nav>
+  </header>
+  
+  <main>
+    <aside class="panel controls">
+      <div class="control-group">
+        <p class="control-title">Metric</p>
+        <div class="toggle-grid" id="metricTabs">
+          <button class="toggle-btn active" data-metric="word_any_wcs">Words Covered (Any Context)</button>
+          <button class="toggle-btn" data-metric="word_all_wcs">Words Covered (All Contexts)</button>
+          <button class="toggle-btn" data-metric="context_wcs">Context-Level Coverage</button>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <p class="control-title">Temperature</p>
+        <div class="toggle-grid" id="tempTabs">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <p class="control-title">Legend</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <span class="badge base">Base Models</span>
+          <span class="badge instruct">Instruct / Tuned</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel">
+      <div id="loader" class="loader">
+        Loading data from <code>results/spanish_pd_books/wcs_word_summary.csv</code>...
+        <br><br>
+        <input type="file" id="fileInput" accept=".csv" style="display:none;">
+        <button class="toggle-btn" onclick="document.getElementById('fileInput').click()">Or select file manually</button>
+      </div>
+      <div class="leaderboard" id="leaderboard"></div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      data: [],
+      metric: 'word_any_wcs',
+      temperature: 1.0,
+      temperatures: []
+    };
+
+    function determineVariant(modelName) {
+      const lower = modelName.toLowerCase();
+      if (lower.includes('instruct') || lower.includes('-it') || lower.includes('chat') || lower.includes('distill')) {
+        return 'instruct';
+      }
+      return 'base';
+    }
+
+    function formatModelName(model) {
+      return model.split('/').pop();
+    }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      const parsed = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const values = [];
+        let curr = "", inQuotes = false;
+        for (let char of lines[i]) {
+          if (char === '"') inQuotes = !inQuotes;
+          else if (char === ',' && !inQuotes) { values.push(curr); curr = ""; }
+          else curr += char;
+        }
+        values.push(curr);
+
+        const row = {};
+        headers.forEach((h, idx) => row[h] = values[idx] ? values[idx].trim().replace(/"/g, '') : "");
+        
+        row.temperature = parseFloat(row.temperature);
+        row.word_any_wcs = parseFloat(row.word_any_wcs) || 0;
+        row.word_all_wcs = parseFloat(row.word_all_wcs) || 0;
+        
+        const covered = parseFloat(row.covered_contexts) || 0;
+        const total = parseFloat(row.total_contexts) || 0;
+        row.context_wcs = total > 0 ? (covered / total) * 100 : 0; // Convert to percentage
+        
+        // Convert word metrics to percentages if they aren't already
+        // Assuming word_any_wcs is a count out of 100 words based on WCS standard
+        if (row.word_any_wcs <= 100 && !row.word_any_wcs.toString().includes('.')) {
+             row.word_any_wcs = row.word_any_wcs; // Already out of 100
+        }
+        
+        parsed.push(row);
+      }
+      return parsed;
+    }
+
+    function init(data) {
+      state.data = data;
+      state.temperatures = [...new Set(data.map(d => d.temperature))].sort();
+      state.temperature = state.temperatures.includes(1.0) ? 1.0 : state.temperatures[0];
+      
+      const tempTabs = document.getElementById('tempTabs');
+      tempTabs.innerHTML = '';
+      state.temperatures.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = `toggle-btn ${t === state.temperature ? 'active' : ''}`;
+        btn.textContent = `T = ${t}`;
+        btn.onclick = () => {
+          state.temperature = t;
+          document.querySelectorAll('#tempTabs .toggle-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          render();
+        };
+        tempTabs.appendChild(btn);
+      });
+
+      document.getElementById('loader').style.display = 'none';
+      render();
+    }
+
+    function render() {
+      const container = document.getElementById('leaderboard');
+      container.innerHTML = '';
+
+      // Filter and sort
+      let filtered = state.data.filter(d => d.temperature === state.temperature && d.decoder === 'top_p');
+      if (filtered.length === 0) {
+        // Fallback if top_p isn't available
+        filtered = state.data.filter(d => d.temperature === state.temperature);
+      }
+      
+      // Deduplicate by model (take best if duplicates exist)
+      const bestScores = {};
+      filtered.forEach(row => {
+          if (!bestScores[row.model] || row[state.metric] > bestScores[row.model][state.metric]) {
+              bestScores[row.model] = row;
+          }
+      });
+      filtered = Object.values(bestScores);
+
+      filtered.sort((a, b) => b[state.metric] - a[state.metric]);
+
+      const maxScore = Math.max(...filtered.map(d => d[state.metric]), 100);
+
+      filtered.forEach((row, index) => {
+        const variant = determineVariant(row.model);
+        const score = row[state.metric];
+        const pct = (score / maxScore) * 100;
+        
+        const el = document.createElement('div');
+        el.className = 'row';
+        el.style.animationDelay = `${index * 0.05}s`;
+        
+        el.innerHTML = `
+          <div class="rank">#${index + 1}</div>
+          <div class="model-info">
+            <div class="model-name" title="${row.model}">${formatModelName(row.model)}</div>
+            <div class="badge ${variant}">${variant}</div>
+          </div>
+          <div class="bar-container">
+            <div class="bar ${variant}" style="width: 0%"></div>
+          </div>
+          <div class="score">${score.toFixed(1)}</div>
+        `;
+        
+        container.appendChild(el);
+        
+        // Trigger reflow for animation
+        setTimeout(() => {
+          el.querySelector('.bar').style.width = `${pct}%`;
+        }, 50);
+      });
+    }
+
+    // Event Listeners
+    document.querySelectorAll('#metricTabs .toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#metricTabs .toggle-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        state.metric = e.target.dataset.metric;
+        render();
+      });
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => init(parseCSV(evt.target.result));
+        reader.readAsText(file);
+      }
+    });
+
+    // Auto-load
+    fetch('results/spanish_pd_books/wcs_word_summary.csv', { cache: "no-store" })
+      .then(res => res.text())
+      .then(text => init(parseCSV(text)))
+      .catch(err => {
+        console.warn("Auto-load failed, waiting for manual upload.", err);
+      });
+  </script>
+</body>
+</html>
