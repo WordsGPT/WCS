@@ -219,7 +219,7 @@ def _gemini_boolean_classification(
     result = _gemini_structured_response(
         prompt,
         response_schema,
-        max(64, expected * 8),
+        max(1024, expected * 32),
         model=model,
         timeout_seconds=timeout_seconds,
         max_attempts=max_attempts,
@@ -310,7 +310,7 @@ def validate_contexts_with_gemini_detailed(
     response = _gemini_structured_response(
         prompt,
         response_schema,
-        max(512, len(texts) * 48),
+        max(4096, len(texts) * 128),
         model=model,
         timeout_seconds=timeout_seconds,
         max_attempts=max_attempts,
