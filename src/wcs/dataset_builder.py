@@ -212,8 +212,6 @@ def _gemini_boolean_classification(
             "accepted": {
                 "type": "ARRAY",
                 "items": {"type": "BOOLEAN"},
-                "minItems": expected,
-                "maxItems": expected,
             }
         },
         "required": ["accepted"],
@@ -295,8 +293,6 @@ def validate_contexts_with_gemini_detailed(
         "properties": {
             "decisions": {
                 "type": "ARRAY",
-                "minItems": len(texts),
-                "maxItems": len(texts),
                 "items": {
                     "type": "OBJECT",
                     "properties": {
