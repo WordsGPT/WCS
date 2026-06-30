@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from wcs.dataset_builder import (
+    _parse_coherence_response,
     build_samples,
     index_corpus_occurrences,
     load_frequency_entries,
@@ -38,6 +39,7 @@ class DatasetBuilderTest(unittest.TestCase):
                 seed=7,
                 min_word_length=3,
                 contexts_per_word=1,
+                skip_coherence_check=True,
             )
 
         self.assertFalse(missing)
@@ -114,6 +116,7 @@ class DatasetBuilderTest(unittest.TestCase):
                 exclude_capitalized_matches=True,
                 min_word_length=3,
                 contexts_per_word=1,
+                skip_coherence_check=True,
             )
 
         self.assertFalse(missing)
@@ -132,13 +135,14 @@ class DatasetBuilderTest(unittest.TestCase):
                 seed=7,
                 min_word_length=8,
                 contexts_per_word=1,
+                skip_coherence_check=True,
             )
 
         self.assertFalse(missing)
         self.assertTrue(all(len(sample.word) >= 8 for sample in samples))
 
     def test_build_samples_can_skip_coherence_check(self) -> None:
-        with patch("wcs.dataset_builder.is_text_coherent") as coherent:
+        with patch("wcs.dataset_builder.validate_contexts_with_gemini") as coherent:
             samples, missing = build_samples(
                 frequency_path=FIXTURES / "frequency" / "norvig_sample.tsv",
                 corpus_path=FIXTURES / "pg19_sample",
@@ -170,6 +174,7 @@ class DatasetBuilderTest(unittest.TestCase):
                 min_word_length=3,
                 dictionary_path=FIXTURES / "frequency" / "dictionary_sample.txt",
                 contexts_per_word=1,
+                skip_coherence_check=True,
             )
 
         self.assertFalse(missing)
@@ -191,6 +196,7 @@ class DatasetBuilderTest(unittest.TestCase):
                     min_word_length=3,
                     contexts_per_word=1,
                     checkpoint_path=output,
+                    skip_coherence_check=True,
                 )
 
                 resumed_samples, _ = build_samples(
@@ -205,6 +211,7 @@ class DatasetBuilderTest(unittest.TestCase):
                     contexts_per_word=1,
                     checkpoint_path=output,
                     resume=True,
+                    skip_coherence_check=True,
                 )
 
         self.assertEqual(len(first_samples), 1)
@@ -214,6 +221,65 @@ class DatasetBuilderTest(unittest.TestCase):
             "sample-000002",
         ])
         self.assertEqual(len({sample.word for sample in resumed_samples}), 2)
+
+    def test_build_samples_batches_candidate_contexts_per_word(self) -> None:
+        def accept_first(texts: list[str], **_: object) -> list[bool]:
+            return [index == 0 for index, _text in enumerate(texts)]
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            frequency = root / "frequency.tsv"
+            frequency.write_text("1\ttarget\t3\n", encoding="utf-8")
+            corpus = root / "book.txt"
+            corpus.write_text(
+                "uno dos tres cuatro cinco target. "
+                "seis siete ocho nueve diez target. "
+                "once doce trece catorce quince target.",
+                encoding="utf-8",
+            )
+            with (
+                patch("wcs.dataset_builder._gemini_api_key", return_value="test-key"),
+                patch(
+                    "wcs.dataset_builder.validate_contexts_with_gemini",
+                    side_effect=accept_first,
+                ) as validate,
+            ):
+                samples, missing = build_samples(
+                    frequency_path=frequency,
+                    corpus_path=corpus,
+                    rank_min=1,
+                    rank_max=1,
+                    sample_size=1,
+                    context_tokens=5,
+                    seed=7,
+                    min_word_length=3,
+                    contexts_per_word=1,
+                    candidate_contexts_per_word=3,
+                    coherence_workers=2,
+                )
+
+        self.assertFalse(missing)
+        self.assertEqual(len(samples), 1)
+        validate.assert_called_once()
+        self.assertEqual(len(validate.call_args.args[0]), 3)
+
+    def test_parse_coherence_response_requires_one_boolean_per_context(self) -> None:
+        response = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [{"text": '{"accepted":[true,false,true]}'}]
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(
+            _parse_coherence_response(response, 3),
+            [True, False, True],
+        )
+        with self.assertRaises(ValueError):
+            _parse_coherence_response(response, 2)
 
 
 if __name__ == "__main__":

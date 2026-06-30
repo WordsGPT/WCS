@@ -41,7 +41,13 @@ python scripts/build_samples.py \
 
 For PG-19, point `--corpus` at a directory containing `.txt` files from the test partition.
 
-`--sample-size` is the number of target words. `--contexts-per-word` is the number of accepted text contexts kept for each word. The builder first filters out words without enough raw corpus contexts, then runs the required Gemini coherence check.
+`--sample-size` is the number of target words. `--contexts-per-word` is the
+number of accepted text contexts kept for each word. The builder first filters
+out words without enough raw corpus contexts, then submits several candidate
+contexts for each word to Gemini in one structured request. By default it uses
+`gemini-2.5-flash-lite`, sends 20 candidates per word, and runs four word-level
+requests concurrently. Adjust `--candidate-contexts-per-word` and
+`--coherence-workers` to match the API quota.
 
 Use `--resume` to continue appending to an existing output file. Resume preserves complete word groups and continues sample IDs from the checkpoint.
 
@@ -54,6 +60,60 @@ Use `--dictionary /usr/share/dict/linux.words` to keep only targets found in the
 Use `--language Spanish` when building Spanish corpora so the Gemini coherence
 check asks for coherent Spanish prose. The tokenizer and frequency-list parser
 accept accented Unicode words.
+
+Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` in the environment or `.env`. The
+validator requires an API key unless `--skip-coherence-check` is explicitly
+used. It checks both the quality of the excerpt and whether the target word is
+a natural grammatical and semantic continuation.
+
+## Spanish PD Books Experiment
+
+Install the optional Parquet dependencies:
+
+```bash
+python -m pip install -e '.[pd-books]'
+```
+
+Use the existing Leipzig Spanish News 2023 frequency list with held-out
+Spanish-PD-Books contexts, producing 100 words with 10 Gemini-approved contexts
+each:
+
+```bash
+scripts/build_spanish_pd_books_samples.sh
+```
+
+The default preparation downloads four numerically sorted Spanish-PD-Books
+Parquet shards for contexts. Target ranks come from
+`data/raw/spanish_frequency.tsv`, generated from Leipzig
+`spa_news_2023_1M`. It writes:
+
+- `data/processed/spanish_pd_books/contexts/`
+- `data/processed/spanish_pd_books/manifest.json`
+- `data/processed/samples.spanish_pd_books.100x10.jsonl`
+
+Existing local Parquet files can be used without network access:
+
+```bash
+LOCAL_ONLY=1 scripts/build_spanish_pd_books_samples.sh
+```
+
+The main settings can be overridden as environment variables, for example:
+
+```bash
+COHERENCE_WORKERS=8 \
+CANDIDATE_CONTEXTS_PER_WORD=24 \
+CONTEXT_SHARDS=6 \
+scripts/build_spanish_pd_books_samples.sh
+```
+
+To derive frequencies from separate PD Books shards instead, set
+`FREQUENCY_SHARDS` and point `FREQUENCY` at the generated file:
+
+```bash
+FREQUENCY_SHARDS=2 \
+FREQUENCY=data/processed/spanish_pd_books/frequency.tsv \
+scripts/build_spanish_pd_books_samples.sh
+```
 
 ## Build Word Frequency Lists
 
