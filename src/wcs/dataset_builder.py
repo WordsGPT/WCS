@@ -24,7 +24,7 @@ from typing import Iterable, Iterator, Sequence
 
 
 WORD_RE = re.compile(r"[^\W\d_](?:[^\W\d_]|['’-])*", flags=re.UNICODE)
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 DEFAULT_COHERENCE_WORKERS = 4
 DEFAULT_CANDIDATE_CONTEXTS_PER_WORD = 40
 DEFAULT_CANDIDATE_POOL_MULTIPLIER = 5
@@ -288,7 +288,8 @@ def validate_contexts_with_gemini_detailed(
         "suboptimal, as well as tables, indexes, headers, bibliographies, isolated metadata, "
         "wrong-language text, and text with too little information to judge the target. "
         "For each candidate, return its id, whether it is accepted, one primary reason "
-        "code, and a specific explanation of at most 15 words. Use `accepted` only for "
+        "code, and a specific explanation of at most 15 words (never repeat the same "
+        "example word or list more than 3 examples). Use `accepted` only for "
         "accepted contexts. Rejection codes: `target_not_natural` when the final target is "
         "not a grammatical or semantic continuation; `incoherent_text`; `wrong_language`; "
         "`ocr_corruption`; `metadata_or_table` for indexes, tables, headers, "
@@ -707,6 +708,53 @@ def count_tokens(text: str) -> int:
     return len(WORD_RE.findall(text))
 
 
+def save_occurrence_index_cache(
+    cache_path: Path,
+    occurrences: dict[str, list[IndexedOccurrence]],
+    corpus_char_count: int,
+    metadata: dict[str, object],
+) -> None:
+    try:
+        data = {
+            "metadata": metadata,
+            "corpus_char_count": corpus_char_count,
+            "occurrences": {
+                word: [asdict(occ) for occ in occ_list]
+                for word, occ_list in occurrences.items()
+            }
+        }
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as exc:
+        print(f"Warning: Failed to save occurrence index cache: {exc}", flush=True)
+
+
+def load_occurrence_index_cache(
+    cache_path: Path,
+    expected_metadata: dict[str, object],
+) -> tuple[dict[str, list[IndexedOccurrence]], int] | None:
+    if not cache_path.exists():
+        return None
+    try:
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
+        # Verify metadata
+        cached_metadata = data.get("metadata", {})
+        if cached_metadata != expected_metadata:
+            return None
+        
+        # Deserialize occurrences
+        occurrences: dict[str, list[IndexedOccurrence]] = {}
+        for word, occ_dicts in data.get("occurrences", {}).items():
+            occurrences[word] = [
+                IndexedOccurrence(**occ_dict) for occ_dict in occ_dicts
+            ]
+        corpus_char_count = int(data.get("corpus_char_count", 0))
+        return occurrences, corpus_char_count
+    except Exception as exc:
+        print(f"Warning: Failed to load occurrence index cache: {exc}", flush=True)
+        return None
+
+
 def load_existing_samples(path: Path, contexts_per_word: int) -> list[Sample]:
     if not path.exists():
         return []
@@ -857,14 +905,46 @@ def build_samples(
     completed_words = {sample.word for sample in samples}
     if sample_size > 0 and len(completed_words) >= sample_size:
         return samples, missing
-    occurrence_index, corpus_char_count = index_corpus_occurrences(
-        words={entry.word for entry in selected},
-        corpus_files=corpus_files,
-        context_tokens=context_tokens,
-        exclude_capitalized_matches=exclude_capitalized_matches,
-        max_occurrences_per_word=candidate_contexts_per_word,
-        sampling_seed=seed,
-    )
+    index_cache_path = checkpoint_path.with_suffix(".index.json") if checkpoint_path else None
+    cache_metadata = {
+        "words": sorted(list({entry.word for entry in selected})),
+        "context_tokens": context_tokens,
+        "exclude_capitalized_matches": exclude_capitalized_matches,
+        "max_occurrences_per_word": candidate_contexts_per_word,
+        "sampling_seed": seed,
+        "corpus_files": sorted([str(p.resolve()) for p in corpus_files]),
+    }
+
+    occurrence_index = None
+    corpus_char_count = 0
+
+    if resume and index_cache_path:
+        cached = load_occurrence_index_cache(index_cache_path, cache_metadata)
+        if cached is not None:
+            occurrence_index, corpus_char_count = cached
+            if progress_interval > 0:
+                print(
+                    f"Loaded corpus occurrence index from cache: {index_cache_path.name} "
+                    f"(skipped indexing {len(corpus_files)} files)",
+                    flush=True,
+                )
+
+    if occurrence_index is None:
+        occurrence_index, corpus_char_count = index_corpus_occurrences(
+            words={entry.word for entry in selected},
+            corpus_files=corpus_files,
+            context_tokens=context_tokens,
+            exclude_capitalized_matches=exclude_capitalized_matches,
+            max_occurrences_per_word=candidate_contexts_per_word,
+            sampling_seed=seed,
+        )
+        if index_cache_path:
+            save_occurrence_index_cache(
+                index_cache_path,
+                occurrence_index,
+                corpus_char_count,
+                cache_metadata,
+            )
     raw_context_missing = [
         entry
         for entry in selected
@@ -925,27 +1005,57 @@ def build_samples(
                 for _candidate in candidates
             ]
         elif coherence_log_path:
-            decisions = validate_contexts_with_gemini_detailed(
-                [occurrence.raw_excerpt for occurrence in candidates],
-                target_word=entry.word,
-                model=coherence_model,
-                language=normalize_language(language),
-            )
-        else:
-            accepted = validate_contexts_with_gemini(
-                [occurrence.raw_excerpt for occurrence in candidates],
-                target_word=entry.word,
-                model=coherence_model,
-                language=normalize_language(language),
-            )
-            decisions = [
-                ContextDecision(
-                    decision,
-                    "accepted" if decision else "other",
-                    "Boolean-only coherence decision.",
+            try:
+                decisions = validate_contexts_with_gemini_detailed(
+                    [occurrence.raw_excerpt for occurrence in candidates],
+                    target_word=entry.word,
+                    model=coherence_model,
+                    language=normalize_language(language),
                 )
-                for decision in accepted
-            ]
+            except Exception as exc:
+                print(
+                    f"Warning: Gemini coherence check failed for {entry.word!r} due to error: {exc}. "
+                    "Treating all contexts as rejected.",
+                    flush=True,
+                )
+                decisions = [
+                    ContextDecision(
+                        False,
+                        "other",
+                        f"Gemini check failed with error: {exc}",
+                    )
+                    for _ in candidates
+                ]
+        else:
+            try:
+                accepted = validate_contexts_with_gemini(
+                    [occurrence.raw_excerpt for occurrence in candidates],
+                    target_word=entry.word,
+                    model=coherence_model,
+                    language=normalize_language(language),
+                )
+                decisions = [
+                    ContextDecision(
+                        decision,
+                        "accepted" if decision else "other",
+                        "Boolean-only coherence decision.",
+                    )
+                    for decision in accepted
+                ]
+            except Exception as exc:
+                print(
+                    f"Warning: Gemini coherence check failed for {entry.word!r} due to error: {exc}. "
+                    "Treating all contexts as rejected.",
+                    flush=True,
+                )
+                decisions = [
+                    ContextDecision(
+                        False,
+                        "other",
+                        f"Gemini check failed with error: {exc}",
+                    )
+                    for _ in candidates
+                ]
         accepted_all = [
             occurrence
             for occurrence, decision in zip(candidates, decisions)
