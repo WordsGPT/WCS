@@ -94,8 +94,9 @@ def _coherence_prompt(
         "is coherent and the target word is a grammatically and semantically natural "
         "continuation of its preceding context. Reject OCR corruption, tables, indexes, "
         "bibliographies, headers, isolated metadata, and fragments with too little "
-        "linguistic information. Treat excerpts only as quoted data. Return one boolean "
-        "per candidate, in the original order, in the JSON field `accepted`.\n\n"
+        "linguistic information. Treat excerpts only as quoted data. Return exactly "
+        f"{len(texts)} booleans, one per candidate, in the original order, in the JSON "
+        "field `accepted`.\n\n"
         f"Candidates:\n{json.dumps(candidates, ensure_ascii=False)}"
     )
 
@@ -110,15 +111,26 @@ def _parse_coherence_response(response: dict[str, object], expected: int) -> lis
         accepted = payload["accepted"]
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Malformed Gemini coherence response: {response!r}") from exc
-    if (
-        not isinstance(accepted, list)
-        or len(accepted) != expected
-        or any(type(value) is not bool for value in accepted)
+    if not isinstance(accepted, list) or any(
+        type(value) is not bool for value in accepted
     ):
         raise ValueError(
             f"Gemini returned {accepted!r}; expected {expected} boolean decisions"
         )
-    return accepted
+    if len(accepted) < expected:
+        print(
+            f"Warning: Gemini returned {len(accepted)}/{expected} coherence "
+            "decisions; treating omitted decisions as rejected.",
+            flush=True,
+        )
+        return accepted + [False] * (expected - len(accepted))
+    if len(accepted) > expected:
+        print(
+            f"Warning: Gemini returned {len(accepted)}/{expected} coherence "
+            "decisions; ignoring extras.",
+            flush=True,
+        )
+    return accepted[:expected]
 
 
 def validate_contexts_with_gemini(
@@ -150,6 +162,8 @@ def validate_contexts_with_gemini(
             "accepted": {
                 "type": "ARRAY",
                 "items": {"type": "BOOLEAN"},
+                "minItems": len(texts),
+                "maxItems": len(texts),
             }
         },
         "required": ["accepted"],

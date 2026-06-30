@@ -278,8 +278,14 @@ class DatasetBuilderTest(unittest.TestCase):
             _parse_coherence_response(response, 3),
             [True, False, True],
         )
-        with self.assertRaises(ValueError):
-            _parse_coherence_response(response, 2)
+        self.assertEqual(
+            _parse_coherence_response(response, 2),
+            [True, False],
+        )
+        self.assertEqual(
+            _parse_coherence_response(response, 4),
+            [True, False, True, False],
+        )
 
 
 if __name__ == "__main__":
