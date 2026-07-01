@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WCS Context Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;1,300&display=swap');
+
+    :root {
+      --bg: #09090b;
+      --bg-panel: rgba(24, 24, 27, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.5);
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 20px 30px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    h1 {
+      margin: 0;
+      font-weight: 800;
+      font-size: 24px;
+      background: linear-gradient(135deg, #fff, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-left: 24px;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--accent); }
+
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-box {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+
+    .word-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .word-item {
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 4px;
+      transition: background 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .word-item:hover { background: rgba(255,255,255,0.05); }
+    .word-item.active {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .word-item .word-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 12px;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px;
+      background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
+    }
+    
+    .content-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .controls-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 30px;
+      background: rgba(255,255,255,0.02);
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    
+    select {
+      background: rgba(0,0,0,0.5);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .context-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+    }
+
+    .text-body {
+      font-family: 'Merriweather', serif;
+      font-size: 16px;
+      line-height: 1.8;
+      color: #d4d4d8;
+      margin-bottom: 20px;
+      white-space: pre-wrap;
+    }
+    
+    .target-word {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+    }
+
+    .model-results {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .model-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+    }
+    
+    .model-badge.found {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.1);
+      color: #6ee7b7;
+    }
+    
+    .model-badge.missed {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+    }
+
+    .indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .found .indicator { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .missed .indicator { background: var(--danger); }
+    
+    .loader {
+      text-align: center;
+      padding: 60px;
+      color: var(--text-muted);
+    }
+    
+    .upload-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Context Explorer</h1>
+    <nav>
+      <a href="index.html">Main Suite</a>
+      <a href="spanish_leaderboard.html">Spanish Leaderboard</a>
+      <a href="multilingual_gap.html">Multilingual Gap</a>
+    </nav>
+  </header>
+  
+  <main>
+    <div class="sidebar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search words...">
+      </div>
+      <div class="word-list" id="wordList">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+    
+    <div class="content" id="mainContent">
+      <div class="content-inner" id="contentInner">
+        <div id="loader" class="loader">
+          <h2>Load Explorer Data</h2>
+          <p>Please generate <code>explorer_data.json</code> using the python script, or upload it here.</p>
+          <input type="file" id="fileInput" accept=".json" style="display:none;">
+          <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Select JSON File</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const state = {
+      data: null,
+      selectedWord: null,
+      searchQuery: '',
+      successThreshold: 0 // Rank 0 is top guess
+    };
+
+    function init(data) {
+      state.data = data;
+      document.getElementById('loader').style.display = 'none';
+      renderSidebar();
+      
+      const words = Object.keys(data.words).sort();
+      if (words.length > 0) {
+        selectWord(words[0]);
+      }
+    }
+
+    function renderSidebar() {
+      const container = document.getElementById('wordList');
+      container.innerHTML = '';
+      
+      let words = Object.keys(state.data.words).sort();
+      if (state.searchQuery) {
+        words = words.filter(w => w.toLowerCase().includes(state.searchQuery.toLowerCase()));
+      }
+      
+      words.forEach(w => {
+        const item = document.createElement('div');
+        item.className = `word-item ${w === state.selectedWord ? 'active' : ''}`;
+        item.innerHTML = `
+          <span>${w}</span>
+          <span class="word-count">${state.data.words[w].contexts.length}</span>
+        `;
+        item.onclick = () => selectWord(w);
+        container.appendChild(item);
+      });
+    }
+
+    function selectWord(word) {
+      state.selectedWord = word;
+      renderSidebar(); // Update active state
+      renderContexts();
+    }
+
+    function renderContexts() {
+      const container = document.getElementById('contentInner');
+      
+      const wordData = state.data.words[state.selectedWord];
+      if (!wordData) return;
+
+      let html = `
+        <div class="controls-bar">
+          <div>
+            <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:4px;">Success Threshold</label>
+            <select id="thresholdSelect" onchange="updateThreshold(this.value)">
+              <option value="0" ${state.successThreshold === 0 ? 'selected' : ''}>Rank 1 (Top Guess)</option>
+              <option value="4" ${state.successThreshold === 4 ? 'selected' : ''}>Top 5</option>
+              <option value="99" ${state.successThreshold === 99 ? 'selected' : ''}>Top 100</option>
+            </select>
+          </div>
+        </div>
+        <h2 style="margin-top:0;">Contexts for <span style="color:var(--accent)">"${state.selectedWord}"</span></h2>
+      `;
+
+      wordData.contexts.forEach(ctx => {
+        // Highlight the target word
+        // In the raw data, the prefix is the text leading up to the word. So we just append the target word highlighted.
+        const displayText = ctx.prefix + `<span class="target-word">${ctx.target}</span>`;
+        
+        html += `<div class="context-card"><div class="text-body">${displayText}</div><div class="model-results">`;
+        
+        state.data.models.forEach(model => {
+          const res = ctx.results[model];
+          if (!res) return;
+          
+          const isFound = res.rank <= state.successThreshold;
+          const statusClass = isFound ? 'found' : 'missed';
+          const modelName = model.split('/').pop();
+          
+          html += `
+            <div class="model-badge ${statusClass}" title="Rank: ${res.rank + 1} | Prob: ${(res.prob * 100).toFixed(2)}%">
+              <div class="indicator"></div>
+              ${modelName}
+            </div>
+          `;
+        });
+        
+        html += `</div></div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    window.updateThreshold = function(val) {
+      state.successThreshold = parseInt(val, 10);
+      renderContexts();
+    };
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      renderSidebar();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => init(JSON.parse(evt.target.result));
+        reader.readAsText(file);
+      }
+    });
+
+    // Attempt auto-load
+    fetch('explorer_data.json', { cache: "no-store" })
+      .then(res => res.json())
+      .then(data => init(data))
+      .catch(err => {
+        console.warn("No local explorer_data.json found. Waiting for upload.", err);
+      });
+  </script>
+</body>
+</html>
