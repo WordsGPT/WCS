@@ -413,7 +413,7 @@
       renderSidebar();
     });
 
-    fetch('explorer_data.json', { cache: "no-store" })
+    fetch('explorer_data.json?v=' + Date.now(), { cache: "no-store" })
       .then(res => res.json())
       .then(data => init(data))
       .catch(err => {
