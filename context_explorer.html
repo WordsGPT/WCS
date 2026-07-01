@@ -374,6 +374,20 @@
             statusClass = 'prob-missed';
           }
           
+          let top5Html = '';
+          if (res.top5 && res.top5.length > 0) {
+            top5Html = '<div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">' + 
+                       '<div style="font-size: 11px; color: #a1a1aa; margin-bottom: 4px;">Top 5 Predictions:</div>';
+            res.top5.forEach((t, i) => {
+              let tokenText = t.t ? t.t.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+              top5Html += `<div style="display:flex; justify-content:space-between; font-size:12px; font-family:'JetBrains Mono', monospace;">
+                             <span style="color:#e4e4e7">"${tokenText}"</span>
+                             <span style="color:#71717a">${(t.p * 100).toFixed(2)}%</span>
+                           </div>`;
+            });
+            top5Html += '</div>';
+          }
+
           html += `
             <div class="model-badge">
               <div class="model-badge-header">
@@ -384,6 +398,7 @@
                 Target Prob: ${(res.prob * 100).toFixed(4)}%<br>
                 Target Rank: ${res.rank + 1}
               </div>
+              ${top5Html}
             </div>
           `;
         });

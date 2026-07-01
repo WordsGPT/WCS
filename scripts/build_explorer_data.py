@@ -69,10 +69,13 @@ def main():
                 
                 rank = d.get('rank', 9999)
                 prob = d.get('probability', 0.0)
+                top_5_tokens = d.get('top_5_tokens', [])
+                top_5_probs = d.get('top_5_probs', [])
                 
                 contexts_map[sid]["results"][model] = {
                     "rank": rank,
-                    "prob": prob
+                    "prob": prob,
+                    "top5": [{"t": t, "p": p} for t, p in zip(top_5_tokens, top_5_probs)]
                 }
 
     data["models"].sort()
