@@ -32,6 +32,8 @@ class AuditTokenRow:
     context_token_count: int
     prefix_char_count: int
     word_token_count: int
+    top_5_tokens: list[str] | None = None
+    top_5_probs: list[float] | None = None
 
 
 def load_samples(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
@@ -87,11 +89,12 @@ def rank_probability_from_logits(
     logits: Any,
     token_id: int,
     temperature: float = 1.0,
-) -> tuple[int, float, float, float, float]:
+    top_k: int = 5,
+) -> tuple[int, float, float, float, float, list[int], list[float]]:
     """Return rank/probability diagnostics for one token id.
 
     Returns:
-        rank, target_probability, top_probability, ratio_to_top, cumulative_probability
+        rank, target_probability, top_probability, ratio_to_top, cumulative_probability, top_k_ids, top_k_probs
     """
 
     import torch
@@ -106,12 +109,17 @@ def rank_probability_from_logits(
     sorted_probs, _ = torch.sort(probs, descending=True)
     cumulative_probability = float(torch.sum(sorted_probs[:rank]).item())
     ratio = float((target_prob / top_prob).item()) if float(top_prob.item()) > 0 else 0.0
+    
+    top_k_probs, top_k_ids = torch.topk(probs, k=min(top_k, probs.size(-1)))
+    
     return (
         rank,
         float(target_prob.item()),
         float(top_prob.item()),
         ratio,
         cumulative_probability,
+        top_k_ids.tolist(),
+        top_k_probs.tolist(),
     )
 
 
@@ -137,9 +145,10 @@ def audit_sample(
         with torch.inference_mode():
             outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
-        rank, probability, top_probability, ratio, cumulative_probability = (
+        rank, probability, top_probability, ratio, cumulative_probability, top_k_ids, top_k_probs = (
             rank_probability_from_logits(logits, token_id, temperature=temperature)
         )
+        top_k_tokens = [tokenizer.decode([tid]) for tid in top_k_ids]
         rows.append(
             AuditTokenRow(
                 sample_id=sample["id"],
@@ -159,6 +168,8 @@ def audit_sample(
                 context_token_count=int(sample["context_token_count"]),
                 prefix_char_count=len(sample["prefix"]),
                 word_token_count=len(word_ids),
+                top_5_tokens=top_k_tokens,
+                top_5_probs=top_k_probs,
             )
         )
         current_ids.append(token_id)
@@ -192,9 +203,10 @@ def audit_sample_temperatures(
             outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
         for temperature in temperature_values:
-            rank, probability, top_probability, ratio, cumulative_probability = (
+            rank, probability, top_probability, ratio, cumulative_probability, top_k_ids, top_k_probs = (
                 rank_probability_from_logits(logits, token_id, temperature=temperature)
             )
+            top_k_tokens = [tokenizer.decode([tid]) for tid in top_k_ids]
             rows_by_temperature[temperature].append(
                 AuditTokenRow(
                     sample_id=sample["id"],
@@ -214,6 +226,8 @@ def audit_sample_temperatures(
                     context_token_count=int(sample["context_token_count"]),
                     prefix_char_count=len(sample["prefix"]),
                     word_token_count=len(word_ids),
+                    top_5_tokens=top_k_tokens,
+                    top_5_probs=top_k_probs,
                 )
             )
         current_ids.append(token_id)
