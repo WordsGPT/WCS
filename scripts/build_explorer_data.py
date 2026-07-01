@@ -67,16 +67,22 @@ def main():
                 if temp != 1.0 and temp != 0.0:
                     continue # Skip high temperatures to avoid UI clutter
                 
+                word_idx = d.get('word_token_index', 0)
                 rank = d.get('rank', 9999)
                 prob = d.get('probability', 0.0)
-                top_5_tokens = d.get('top_5_tokens', [])
-                top_5_probs = d.get('top_5_probs', [])
                 
-                contexts_map[sid]["results"][model] = {
-                    "rank": rank,
-                    "prob": prob,
-                    "top5": [{"t": t, "p": p} for t, p in zip(top_5_tokens, top_5_probs)]
-                }
+                existing = contexts_map[sid]["results"].get(model)
+                if existing:
+                    existing["prob"] *= prob
+                    existing["rank"] = max(existing["rank"], rank)
+                else:
+                    top_5_tokens = d.get('top_5_tokens', [])
+                    top_5_probs = d.get('top_5_probs', [])
+                    contexts_map[sid]["results"][model] = {
+                        "rank": rank,
+                        "prob": prob,
+                        "top5": [{"t": t, "p": p} for t, p in zip(top_5_tokens, top_5_probs)]
+                    }
 
     data["models"].sort()
     
