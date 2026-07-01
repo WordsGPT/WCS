@@ -119,6 +119,33 @@ inspect examples with:
 python scripts/summarize_context_rejections.py
 ```
 
+Before running the Spanish model suite, strictly re-audit all existing contexts
+and replace only rejected rows from the cached occurrence index:
+
+```bash
+python scripts/repair_spanish_pd_contexts.py
+```
+
+This writes
+`data/processed/samples.spanish_pd_books.100x10.repaired.jsonl` and an auditable
+decision log at `data/processed/spanish_pd_books.reaudit.jsonl`. It does not
+rebuild or rescan the PD Books corpus. The command fails without writing a
+partial dataset if the cache does not contain enough Gemini-approved
+replacements.
+
+To re-audit, repair, and then run the model suite against the repaired samples
+in a separate results directory:
+
+```bash
+scripts/run_spanish_pd_books_suite.sh
+```
+
+`MODELS`, `TEMPERATURES`, `COHERENCE_MODEL`, `COHERENCE_WORKERS`, and
+`GEMINI_MAX_ATTEMPTS` can be provided as environment variables. Re-audit
+defaults to one Gemini worker to avoid request-quota bursts. The separate
+results directory is intentional: existing audit files for the old contexts
+must not be treated as complete results for the repaired dataset.
+
 To derive frequencies from separate PD Books shards instead, set
 `FREQUENCY_SHARDS` and point `FREQUENCY` at the generated file:
 
