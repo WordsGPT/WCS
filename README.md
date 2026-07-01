@@ -141,10 +141,12 @@ scripts/run_spanish_pd_books_suite.sh
 ```
 
 `MODELS`, `TEMPERATURES`, `COHERENCE_MODEL`, `COHERENCE_WORKERS`, and
-`GEMINI_MAX_ATTEMPTS` can be provided as environment variables. Re-audit
-defaults to one Gemini worker to avoid request-quota bursts. The separate
-results directory is intentional: existing audit files for the old contexts
-must not be treated as complete results for the repaired dataset.
+`GEMINI_MAX_ATTEMPTS`, and `CANDIDATE_BATCH_SIZE` can be provided as
+environment variables. Re-audit defaults to one Gemini worker to avoid
+request-quota bursts and replacement candidates are validated in small batches
+to prevent truncated structured responses. The separate results directory is
+intentional: existing audit files for the old contexts must not be treated as
+complete results for the repaired dataset.
 
 To derive frequencies from separate PD Books shards instead, set
 `FREQUENCY_SHARDS` and point `FREQUENCY` at the generated file:

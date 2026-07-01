@@ -92,6 +92,35 @@ class RepairSpanishPdContextsTests(unittest.TestCase):
         self.assertEqual(logs, [])
         self.assertEqual(shortages, {"felino": (1, 0)})
 
+    def test_replacement_candidates_are_validated_in_small_batches(self) -> None:
+        rows = [sample("sample-1", "felino", 1, "texto roto")]
+        decisions = {
+            "sample-1": ContextDecision(False, "ocr_corruption", "Broken scan.")
+        }
+        batch_lengths = []
+
+        def validator(texts, **_kwargs):
+            batch_lengths.append(len(texts))
+            return [
+                ContextDecision(True, "accepted", "Clean prose.") for _ in texts
+            ]
+
+        find_replacements(
+            rows,
+            decisions,
+            {
+                "felino": [
+                    occurrence("felino", start, f"andar {start} felino")
+                    for start in range(2, 11)
+                ]
+            },
+            validator=validator,
+            workers=1,
+            candidate_batch_size=4,
+        )
+
+        self.assertEqual(batch_lengths, [4, 4, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

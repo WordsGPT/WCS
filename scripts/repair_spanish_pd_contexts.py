@@ -141,6 +141,7 @@ def find_replacements(
     validator: Validator = validate_contexts_with_gemini_detailed,
     model: str = DEFAULT_GEMINI_MODEL,
     workers: int = DEFAULT_COHERENCE_WORKERS,
+    candidate_batch_size: int = 8,
 ) -> tuple[
     dict[str, tuple[IndexedOccurrence, ContextDecision]],
     list[dict[str, object]],
@@ -170,12 +171,17 @@ def find_replacements(
         word, candidates = job
         if not candidates:
             return word, candidates, []
-        decisions = validator(
-            [candidate.raw_excerpt for candidate in candidates],
-            target_word=word,
-            model=model,
-            language="Spanish",
-        )
+        decisions: list[ContextDecision] = []
+        for start in range(0, len(candidates), candidate_batch_size):
+            batch = candidates[start : start + candidate_batch_size]
+            decisions.extend(
+                validator(
+                    [candidate.raw_excerpt for candidate in batch],
+                    target_word=word,
+                    model=model,
+                    language="Spanish",
+                )
+            )
         if len(decisions) != len(candidates):
             raise ValueError(
                 f"Gemini returned {len(decisions)}/{len(candidates)} replacement "
@@ -313,6 +319,12 @@ def parse_args() -> argparse.Namespace:
         default=8,
         help="Attempts per Gemini request, with exponential backoff for HTTP 429/5xx.",
     )
+    parser.add_argument(
+        "--candidate-batch-size",
+        type=int,
+        default=8,
+        help="Replacement alternatives per Gemini request; keep small to avoid truncation.",
+    )
     return parser.parse_args()
 
 
@@ -322,6 +334,8 @@ def main() -> int:
         raise SystemExit("--workers must be at least 1")
     if args.max_attempts < 1:
         raise SystemExit("--max-attempts must be at least 1")
+    if args.candidate_batch_size < 1:
+        raise SystemExit("--candidate-batch-size must be at least 1")
     samples = load_samples(args.input)
     occurrences = load_occurrences(args.index)
     validator = partial(
@@ -341,6 +355,7 @@ def main() -> int:
     )
     rejected = sum(not decision.accepted for decision in decisions.values())
     print(f"Gemini rejected {rejected}/{len(samples)} existing contexts.", flush=True)
+    _write_jsonl(args.audit_log, audit_rows)
     replacements, candidate_rows, shortages = find_replacements(
         samples,
         decisions,
@@ -348,6 +363,7 @@ def main() -> int:
         validator=validator,
         model=args.model,
         workers=args.workers,
+        candidate_batch_size=args.candidate_batch_size,
     )
     _write_jsonl(args.audit_log, [*audit_rows, *candidate_rows])
     if shortages:

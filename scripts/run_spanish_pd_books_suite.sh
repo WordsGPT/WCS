@@ -9,6 +9,7 @@ REAUDIT_LOG="${REAUDIT_LOG:-data/processed/spanish_pd_books.reaudit.jsonl}"
 COHERENCE_MODEL="${COHERENCE_MODEL:-gemini-2.5-flash}"
 COHERENCE_WORKERS="${COHERENCE_WORKERS:-1}"
 GEMINI_MAX_ATTEMPTS="${GEMINI_MAX_ATTEMPTS:-8}"
+CANDIDATE_BATCH_SIZE="${CANDIDATE_BATCH_SIZE:-8}"
 RESULTS_DIR="${RESULTS_DIR:-results/spanish_pd_books_repaired}"
 LOGS_DIR="${LOGS_DIR:-logs/spanish_pd_books_repaired}"
 
@@ -19,7 +20,8 @@ LOGS_DIR="${LOGS_DIR:-logs/spanish_pd_books_repaired}"
   --audit-log "$REAUDIT_LOG" \
   --model "$COHERENCE_MODEL" \
   --workers "$COHERENCE_WORKERS" \
-  --max-attempts "$GEMINI_MAX_ATTEMPTS"
+  --max-attempts "$GEMINI_MAX_ATTEMPTS" \
+  --candidate-batch-size "$CANDIDATE_BATCH_SIZE"
 
 suite_command=(
   "$PYTHON_BIN" -u scripts/run_model_suite.py
