@@ -216,6 +216,30 @@
     
     .found-text { color: #6ee7b7; }
     .missed-text { color: #fca5a5; }
+
+    .prob-excellent { color: #10b981; }
+    .prob-good { color: #34d399; }
+    .prob-fair { color: #facc15; }
+    .prob-poor { color: #fb923c; }
+    .prob-missed { color: #ef4444; }
+
+    @media (max-width: 768px) {
+      main {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .content {
+        padding: 20px;
+      }
+      header {
+        padding: 15px 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -331,14 +355,30 @@
           const res = ctx.results[model];
           if (!res) return;
           
-          const isFound = res.rank === 0;
-          const statusText = isFound ? '<span class="found-text">★ Top Guess</span>' : '<span class="missed-text">Missed</span>';
+          let statusText = '';
+          let statusClass = '';
+          if (res.prob >= 0.8) {
+            statusText = 'Excellent';
+            statusClass = 'prob-excellent';
+          } else if (res.prob >= 0.5) {
+            statusText = 'Good';
+            statusClass = 'prob-good';
+          } else if (res.prob >= 0.1) {
+            statusText = 'Fair';
+            statusClass = 'prob-fair';
+          } else if (res.prob >= 0.01) {
+            statusText = 'Poor';
+            statusClass = 'prob-poor';
+          } else {
+            statusText = 'Missed';
+            statusClass = 'prob-missed';
+          }
           
           html += `
             <div class="model-badge">
               <div class="model-badge-header">
                 <span title="${model}">${model.split('/').pop()}</span>
-                ${statusText}
+                <span class="${statusClass}">${statusText}</span>
               </div>
               <div class="model-badge-stats">
                 Target Prob: ${(res.prob * 100).toFixed(4)}%<br>
