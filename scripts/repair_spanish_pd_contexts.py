@@ -24,6 +24,8 @@ from wcs.dataset_builder import (  # noqa: E402
     ContextDecision,
     IndexedOccurrence,
     Sample,
+    index_corpus_occurrences,
+    iter_corpus_files,
     validate_contexts_with_gemini_detailed,
 )
 
@@ -325,6 +327,18 @@ def parse_args() -> argparse.Namespace:
         default=8,
         help="Replacement alternatives per Gemini request; keep small to avoid truncation.",
     )
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        default=Path("data/processed/spanish_pd_books/contexts"),
+        help="Corpus used only when the cached index cannot fill a rejected context.",
+    )
+    parser.add_argument(
+        "--fallback-candidates",
+        type=int,
+        default=200,
+        help="Maximum targeted corpus occurrences retained per shortage word.",
+    )
     return parser.parse_args()
 
 
@@ -336,6 +350,8 @@ def main() -> int:
         raise SystemExit("--max-attempts must be at least 1")
     if args.candidate_batch_size < 1:
         raise SystemExit("--candidate-batch-size must be at least 1")
+    if args.fallback_candidates < 1:
+        raise SystemExit("--fallback-candidates must be at least 1")
     samples = load_samples(args.input)
     occurrences = load_occurrences(args.index)
     validator = partial(
@@ -365,6 +381,54 @@ def main() -> int:
         workers=args.workers,
         candidate_batch_size=args.candidate_batch_size,
     )
+    if shortages and args.corpus.exists():
+        shortage_words = set(shortages)
+        corpus_files = list(iter_corpus_files(args.corpus))
+        if corpus_files:
+            print(
+                "Cached alternatives were insufficient for "
+                f"{', '.join(sorted(shortage_words))}; scanning only "
+                "those target words in the corpus...",
+                flush=True,
+            )
+            shortage_samples = [
+                sample for sample in samples if sample.word in shortage_words
+            ]
+            context_token_counts = {
+                sample.context_token_count for sample in shortage_samples
+            }
+            if len(context_token_counts) != 1:
+                raise ValueError(
+                    "Shortage samples do not share one context-token count"
+                )
+            fallback_occurrences, _ = index_corpus_occurrences(
+                words=shortage_words,
+                corpus_files=corpus_files,
+                context_tokens=context_token_counts.pop(),
+                exclude_capitalized_matches=True,
+                max_occurrences_per_word=args.fallback_candidates,
+                sampling_seed=13,
+            )
+            fallback_decisions = {
+                sample.id: decisions[sample.id] for sample in shortage_samples
+            }
+            (
+                fallback_replacements,
+                fallback_rows,
+                shortages,
+            ) = find_replacements(
+                shortage_samples,
+                fallback_decisions,
+                fallback_occurrences,
+                validator=validator,
+                model=args.model,
+                workers=args.workers,
+                candidate_batch_size=args.candidate_batch_size,
+            )
+            replacements.update(fallback_replacements)
+            for row in fallback_rows:
+                row["stage"] = "targeted_corpus_candidate"
+            candidate_rows.extend(fallback_rows)
     _write_jsonl(args.audit_log, [*audit_rows, *candidate_rows])
     if shortages:
         details = ", ".join(

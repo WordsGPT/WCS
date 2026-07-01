@@ -131,7 +131,9 @@ This writes
 decision log at `data/processed/spanish_pd_books.reaudit.jsonl`. It does not
 rebuild or rescan the PD Books corpus. The command fails without writing a
 partial dataset if the cache does not contain enough Gemini-approved
-replacements.
+replacements. If a resumed build has an incomplete occurrence cache for a
+rejected word, the repair command automatically scans the corpus for only that
+shortage word rather than rebuilding the complete index.
 
 To re-audit, repair, and then run the model suite against the repaired samples
 in a separate results directory:

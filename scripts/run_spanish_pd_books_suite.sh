@@ -4,6 +4,7 @@ set -euo pipefail
 PYTHON_BIN="${PYTHON_BIN:-python}"
 INPUT="${INPUT:-data/processed/samples.spanish_pd_books.100x10.jsonl}"
 INDEX="${INDEX:-data/processed/samples.spanish_pd_books.100x10.index.json}"
+CORPUS="${CORPUS:-data/processed/spanish_pd_books/contexts}"
 REPAIRED_SAMPLES="${REPAIRED_SAMPLES:-data/processed/samples.spanish_pd_books.100x10.repaired.jsonl}"
 REAUDIT_LOG="${REAUDIT_LOG:-data/processed/spanish_pd_books.reaudit.jsonl}"
 COHERENCE_MODEL="${COHERENCE_MODEL:-gemini-2.5-flash}"
@@ -16,6 +17,7 @@ LOGS_DIR="${LOGS_DIR:-logs/spanish_pd_books_repaired}"
 "$PYTHON_BIN" -u scripts/repair_spanish_pd_contexts.py \
   --input "$INPUT" \
   --index "$INDEX" \
+  --corpus "$CORPUS" \
   --output "$REPAIRED_SAMPLES" \
   --audit-log "$REAUDIT_LOG" \
   --model "$COHERENCE_MODEL" \
