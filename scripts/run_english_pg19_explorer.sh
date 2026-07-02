@@ -150,31 +150,31 @@ ensure_hf_auth() {
   die "No Hugging Face login found. Run interactively once or provide HF_TOKEN."
 }
 
-detect_cpu_memory_gib() {
-  awk '/MemTotal/ { value=int(($2/1024/1024)-8); if (value < 16) value=16; print value "GiB"; exit }' \
-    /proc/meminfo
-}
-
 detect_max_memory() {
   if [ -n "${MAX_MEMORY:-}" ]; then
     printf '%s\n' "$MAX_MEMORY"
     return
   fi
-  local rows entries index total reserve usable
-  rows="$(nvidia-smi --query-gpu=index,memory.total --format=csv,noheader,nounits 2>/dev/null)"
-  [ -n "$rows" ] || die "Could not query GPU memory with nvidia-smi"
-  entries=""
-  while IFS=, read -r index total; do
-    index="${index//[[:space:]]/}"
-    total="${total//[[:space:]]/}"
-    reserve=4096
-    [ "$total" -ge 24000 ] || reserve=2048
-    usable=$(( (total - reserve) / 1024 ))
-    [ "$usable" -ge 1 ] || usable=1
-    [ -z "$entries" ] || entries="${entries},"
-    entries="${entries}${index}=${usable}GiB"
-  done <<< "$rows"
-  printf '%s,cpu=%s\n' "$entries" "$(detect_cpu_memory_gib)"
+  python - <<'PY'
+import os
+import torch
+
+gib = 1024 ** 3
+entries = []
+for index in range(torch.cuda.device_count()):
+    total_gib = int(torch.cuda.get_device_properties(index).total_memory / gib)
+    reserve_gib = 4 if total_gib >= 24 else 2
+    entries.append(f"{index}={max(1, total_gib - reserve_gib)}GiB")
+
+try:
+    pages = os.sysconf("SC_PHYS_PAGES")
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    cpu_gib = max(16, int((pages * page_size) / gib) - 8)
+except (AttributeError, OSError, ValueError):
+    cpu_gib = 64
+entries.append(f"cpu={cpu_gib}GiB")
+print(",".join(entries))
+PY
 }
 
 setup_environment() {
@@ -214,7 +214,7 @@ run_worker() {
   trap 'rm -f "$PID_FILE"' EXIT
   local max_memory
   max_memory="$(detect_max_memory)"
-  log "Starting resumable audit: models=$MODELS, max_memory=$max_memory"
+  log "Starting resumable audit: models=$MODELS, max_memory=${max_memory:-auto}"
   local command=(
     python -u scripts/run_model_suite.py
     --samples "$SAMPLES"
@@ -227,10 +227,10 @@ run_worker() {
     --dtype "$DTYPE"
     --device "$DEVICE"
     --device-map "$DEVICE_MAP"
-    --max-memory "$max_memory"
     --offload-folder "$OFFLOAD_FOLDER"
     --retries "$RETRIES"
   )
+  [ -z "$max_memory" ] || command+=(--max-memory "$max_memory")
   [ -z "$LIMIT" ] || command+=(--limit "$LIMIT")
   "${command[@]}"
 
