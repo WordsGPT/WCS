@@ -238,11 +238,38 @@
       color: #e4e4e7;
       min-width: 0;
       overflow-wrap: anywhere;
+      white-space: pre-wrap;
     }
 
     .top5-prob {
       color: #71717a;
       flex: 0 0 auto;
+    }
+
+    .rank-neighbor-target {
+      margin: 3px -5px;
+      padding: 3px 5px;
+      border-radius: 4px;
+      background: rgba(59, 130, 246, 0.16);
+      color: #bfdbfe;
+    }
+
+    .dataset-link.active {
+      color: #93c5fd;
+    }
+
+    .token-step {
+      margin-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 8px;
+    }
+
+    .token-step summary {
+      cursor: pointer;
+      color: #a1a1aa;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      overflow-wrap: anywhere;
     }
     
     .found-text { color: #6ee7b7; }
@@ -410,8 +437,10 @@
 </head>
 <body>
   <header>
-    <h1>Context Explorer</h1>
+    <h1 id="pageTitle">Context Explorer</h1>
     <nav>
+      <a class="dataset-link" data-dataset="spanish" href="context_explorer.html">Spanish</a>
+      <a class="dataset-link" data-dataset="english" href="context_explorer.html?dataset=english">English</a>
       <a href="index.html">Main Suite</a>
     </nav>
   </header>
@@ -432,12 +461,63 @@
   </main>
 
   <script>
+    const DATASETS = {
+      spanish: { file: 'explorer_data.json', label: 'Spanish' },
+      english: { file: 'explorer_data.english.json', label: 'English PG-19' }
+    };
+    const requestedDataset = new URLSearchParams(window.location.search).get('dataset') || 'spanish';
+    const activeDataset = DATASETS[requestedDataset] ? requestedDataset : 'spanish';
+    const datasetConfig = DATASETS[activeDataset];
     const state = { data: null, selectedWord: null, searchQuery: '' };
 
     function init(data) {
       state.data = data;
+      const label = data.metadata?.dataset || datasetConfig.label;
+      document.getElementById('pageTitle').textContent = `${label} Context Explorer`;
+      document.title = `${label} WCS Context Explorer`;
       const words = Object.keys(data.words).sort();
       if (words.length > 0) selectWord(words[0]);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function predictionRow(prediction, extraClass = '') {
+      return `<div class="top5-row ${extraClass}">
+                <span class="top5-token">#${prediction.rank} "${escapeHtml(prediction.t || '')}"</span>
+                <span class="top5-prob">${(prediction.p * 100).toFixed(4)}%</span>
+              </div>`;
+    }
+
+    function predictionList(title, predictions) {
+      if (!predictions || predictions.length === 0) return '';
+      let html = `<div class="top5-block"><div class="top5-title">${title}</div>`;
+      predictions.forEach(prediction => {
+        html += predictionRow(prediction);
+      });
+      return html + '</div>';
+    }
+
+    function tokenStepPredictions(step, index, count) {
+      const open = index === 0 ? ' open' : '';
+      let html = `<details class="token-step"${open}>`;
+      html += `<summary>Token ${index + 1}/${count}: "${escapeHtml(step.t || '')}" ` +
+              `(rank ${step.rank}, ${(step.p * 100).toFixed(4)}%)</summary>`;
+      html += predictionList('Global top 5:', step.top5);
+      if (step.neighborsAbove || step.neighborsBelow) {
+        html += '<div class="top5-block"><div class="top5-title">Rank neighbors:</div>';
+        (step.neighborsAbove || []).forEach(t => { html += predictionRow(t); });
+        html += predictionRow(step, 'rank-neighbor-target');
+        (step.neighborsBelow || []).forEach(t => { html += predictionRow(t); });
+        html += '</div>';
+      }
+      return html + '</details>';
     }
 
     function renderSidebar() {
@@ -449,7 +529,7 @@
       words.forEach(w => {
         const item = document.createElement('div');
         item.className = `word-item ${w === state.selectedWord ? 'active' : ''}`;
-        item.innerHTML = `<span>${w}</span>`;
+        item.innerHTML = `<span>${escapeHtml(w)}</span>`;
         item.onclick = () => selectWord(w);
         container.appendChild(item);
       });
@@ -499,14 +579,14 @@
       // Render Summary Card
       let html = `
         <div class="summary-card">
-          <h2 class="summary-title">"${state.selectedWord}" - Average Performance</h2>
+          <h2 class="summary-title">"${escapeHtml(state.selectedWord)}" - Average Performance</h2>
           <div class="summary-grid">
       `;
       Object.keys(averages).sort().forEach(model => {
         const avg = averages[model];
         html += `
           <div class="summary-stat">
-            <div class="summary-stat-model" title="${model}">${model.split('/').pop()}</div>
+            <div class="summary-stat-model" title="${escapeHtml(model)}">${escapeHtml(model.split('/').pop())}</div>
             <div class="summary-stat-values">
               Prob: ${(avg.prob * 100).toFixed(2)}%<br>
               Rank: ${avg.rank.toFixed(1)}
@@ -518,7 +598,7 @@
 
       // Render Contexts
       wordData.contexts.forEach((ctx, index) => {
-        const displayText = ctx.prefix + `<span class="target-word">${ctx.target}</span>`;
+        const displayText = escapeHtml(ctx.prefix) + `<span class="target-word">${escapeHtml(ctx.target)}</span>`;
         html += `
           <div class="context-card">
             <h3 style="margin-top:0; color:var(--text-muted); font-size:14px; text-transform:uppercase;">Context ${index + 1}</h3>
@@ -549,31 +629,39 @@
             statusClass = 'prob-missed';
           }
           
-          let top5Html = '';
-          if (res.top5 && res.top5.length > 0) {
-            top5Html = '<div class="top5-block">' +
-                       '<div class="top5-title">Top 5 Predictions:</div>';
-            res.top5.forEach((t, i) => {
-              let tokenText = t.t ? t.t.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-              top5Html += `<div class="top5-row">
-                             <span class="top5-token">"${tokenText}"</span>
-                             <span class="top5-prob">${(t.p * 100).toFixed(2)}%</span>
-                           </div>`;
+          let predictionsHtml = '';
+          const detailedSteps = (res.tokenSteps || []).filter(step => step.top5?.length);
+          if (detailedSteps.length > 0) {
+            detailedSteps.forEach((step, index) => {
+              predictionsHtml += tokenStepPredictions(step, index, detailedSteps.length);
             });
-            top5Html += '</div>';
+          } else {
+            predictionsHtml = predictionList('Global top 5:', res.top5);
+            if (res.targetToken && (res.neighborsAbove || res.neighborsBelow)) {
+              predictionsHtml += '<div class="top5-block">' +
+                '<div class="top5-title">First-token rank neighbors:</div>';
+              (res.neighborsAbove || []).forEach(t => {
+                predictionsHtml += predictionRow(t);
+              });
+              predictionsHtml += predictionRow(res.targetToken, 'rank-neighbor-target');
+              (res.neighborsBelow || []).forEach(t => {
+                predictionsHtml += predictionRow(t);
+              });
+              predictionsHtml += '</div>';
+            }
           }
 
           html += `
             <div class="model-badge">
               <div class="model-badge-header">
-                <span title="${model}">${model.split('/').pop()}</span>
+                <span title="${escapeHtml(model)}">${escapeHtml(model.split('/').pop())}</span>
                 <span class="${statusClass}">${statusText}</span>
               </div>
               <div class="model-badge-stats">
-                Target Prob: ${(res.prob * 100).toFixed(4)}%<br>
-                Target Rank: ${res.rank}
+                Word Prob: ${(res.prob * 100).toFixed(4)}%<br>
+                Worst Token Rank: ${res.rank}
               </div>
-              ${top5Html}
+              ${predictionsHtml}
             </div>
           `;
         });
@@ -588,11 +676,17 @@
       renderSidebar();
     });
 
-    fetch('explorer_data.json?v=' + Date.now(), { cache: "no-store" })
+    document.querySelectorAll('.dataset-link').forEach(link => {
+      link.classList.toggle('active', link.dataset.dataset === activeDataset);
+    });
+
+    fetch(datasetConfig.file + '?v=' + Date.now(), { cache: "no-store" })
       .then(res => res.json())
       .then(data => init(data))
       .catch(err => {
-        document.getElementById('contentInner').innerHTML = '<p>Error loading data.</p>';
+        document.getElementById('contentInner').innerHTML =
+          `<p>Error loading ${escapeHtml(datasetConfig.label)} data from ` +
+          `<code>${escapeHtml(datasetConfig.file)}</code>.</p>`;
       });
   </script>
 </body>

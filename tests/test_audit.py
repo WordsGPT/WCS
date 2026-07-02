@@ -48,33 +48,36 @@ class FakeTokenizer:
         raise AssertionError(f"unexpected text to encode: {text!r}")
 
     def decode(self, token_ids: list[int]) -> str:
-        return {3: " tar", 4: "get"}[token_ids[0]]
+        return {3: " tar", 4: "get", 5: " other"}.get(
+            token_ids[0], f"<token-{token_ids[0]}>"
+        )
 
 
 class AuditTest(unittest.TestCase):
     def test_rank_probability_from_logits(self) -> None:
         logits = torch.tensor([0.0, 3.0, 1.0, 2.0])
-        rank, probability, top_probability, ratio, cumulative = rank_probability_from_logits(
-            logits, token_id=3
-        )
+        result = rank_probability_from_logits(logits, token_id=3, neighbor_count=1)
 
-        self.assertEqual(rank, 2)
-        self.assertGreater(probability, 0)
-        self.assertGreater(top_probability, probability)
-        self.assertGreater(ratio, 0)
-        self.assertGreater(cumulative, probability)
+        self.assertEqual(result.rank, 2)
+        self.assertGreater(result.probability, 0)
+        self.assertGreater(result.top_probability, result.probability)
+        self.assertGreater(result.probability_ratio_to_top, 0)
+        self.assertGreater(result.cumulative_probability, result.probability)
+        self.assertEqual([token.token_id for token in result.top_tokens], [1, 3, 2, 0])
+        self.assertEqual([token.token_id for token in result.neighbors_above], [1])
+        self.assertEqual([token.token_id for token in result.neighbors_below], [2])
 
     def test_rank_probability_applies_temperature_scaling(self) -> None:
         logits = torch.tensor([3.0, 2.0, 0.0])
-        _rank, cold_probability, cold_top, _ratio, _cumulative = rank_probability_from_logits(
+        cold = rank_probability_from_logits(
             logits, token_id=1, temperature=0.5
         )
-        _rank, warm_probability, warm_top, _ratio, _cumulative = rank_probability_from_logits(
+        warm = rank_probability_from_logits(
             logits, token_id=1, temperature=1.5
         )
 
-        self.assertGreater(warm_probability, cold_probability)
-        self.assertGreater(cold_top, warm_top)
+        self.assertGreater(warm.probability, cold.probability)
+        self.assertGreater(cold.top_probability, warm.top_probability)
 
     def test_audit_sample_walks_target_tokens(self) -> None:
         sample = {
@@ -103,6 +106,11 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(rows[1].rank, 1)
         self.assertEqual(rows[0].word_token_count, 2)
         self.assertEqual(rows[0].temperature, 0.7)
+        self.assertEqual(rows[0].audit_schema_version, 2)
+        self.assertEqual(rows[0].rank_neighbor_count, 5)
+        self.assertEqual(rows[0].top_5_tokens[:3], [" tar", "get", " other"])
+        self.assertEqual(rows[0].rank_neighbors_above, [])
+        self.assertEqual(rows[0].rank_neighbors_below[0].token_text, "get")
 
     def test_audit_sample_temperatures_reuses_path_for_multiple_temperatures(self) -> None:
         sample = {

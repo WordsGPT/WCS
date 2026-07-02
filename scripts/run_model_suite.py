@@ -26,7 +26,13 @@ from wcs.metrics import (
     write_summary_csv,
     write_word_summary_csv,
 )
-from wcs.audit import parse_temperature_list, temperature_slug
+from wcs.audit import (
+    AUDIT_SCHEMA_VERSION,
+    DEFAULT_RANK_NEIGHBORS,
+    DEFAULT_TOP_K,
+    parse_temperature_list,
+    temperature_slug,
+)
 
 
 @dataclass(frozen=True)
@@ -91,6 +97,26 @@ DEFAULT_MODELS = [
     ),
 ]
 
+ENGLISH_PG19_MODEL_SLUGS = (
+    "llama31-8b-base",
+    "llama31-8b-instruct",
+    "mistral7b-v03-base",
+    "mistral7b-v03-instruct",
+    "qwen35-9b-base",
+    "qwen35-9b-instruct",
+    "qwen25-14b-base",
+    "qwen25-14b-instruct",
+    "gemma3-12b-base",
+    "gemma3-12b-it",
+    "gemma3-27b-base",
+    "gemma3-27b-it",
+    "gemma4-e4b-base",
+    "gemma4-e4b-it",
+    "gemma2-9b-base",
+    "gemma2-9b-it",
+    "deepseek-qwen14b-distill",
+)
+
 
 STOP_REQUESTED = False
 
@@ -112,7 +138,13 @@ def sample_count(path: Path, limit: int | None) -> int:
     return count
 
 
-def audit_is_complete(path: Path, expected_samples: int) -> bool:
+def audit_is_complete(
+    path: Path,
+    expected_samples: int,
+    *,
+    required_top_k: int = DEFAULT_TOP_K,
+    required_rank_neighbors: int = DEFAULT_RANK_NEIGHBORS,
+) -> bool:
     if not path.exists() or path.stat().st_size == 0:
         return False
 
@@ -124,6 +156,18 @@ def audit_is_complete(path: Path, expected_samples: int) -> bool:
                     continue
                 row = json.loads(line)
                 sample_ids.add(str(row["sample_id"]))
+                if int(row.get("audit_schema_version", 0)) < AUDIT_SCHEMA_VERSION:
+                    return False
+                if len(row.get("top_5_tokens") or []) < required_top_k:
+                    return False
+                if len(row.get("top_5_probs") or []) < required_top_k:
+                    return False
+                if int(row.get("rank_neighbor_count", -1)) != required_rank_neighbors:
+                    return False
+                if not isinstance(row.get("rank_neighbors_above"), list):
+                    return False
+                if not isinstance(row.get("rank_neighbors_below"), list):
+                    return False
     except (OSError, json.JSONDecodeError, KeyError):
         return False
 
@@ -151,6 +195,9 @@ def write_manifest(path: Path, completed: dict[str, Path], models: Iterable[Mode
 def select_models(raw: str | None) -> list[ModelSpec]:
     if not raw:
         return list(DEFAULT_MODELS)
+    if raw.strip() == "english-pg19":
+        wanted = set(ENGLISH_PG19_MODEL_SLUGS)
+        return [model for model in DEFAULT_MODELS if model.slug in wanted]
     wanted = {part.strip() for part in raw.split(",") if part.strip()}
     selected = [model for model in DEFAULT_MODELS if model.slug in wanted or model.model_id in wanted]
     missing = sorted(wanted - {model.slug for model in selected} - {model.model_id for model in selected})
@@ -169,12 +216,22 @@ def run_one_model(
     partial_path = args.results_dir / f"audit.{model.slug}.jsonl.partial"
     log_path = args.logs_dir / f"audit.{model.slug}.log"
 
-    if audit_is_complete(output_path, expected_samples):
+    if audit_is_complete(
+        output_path,
+        expected_samples,
+        required_top_k=args.top_k,
+        required_rank_neighbors=args.rank_neighbors,
+    ):
         print(f"[skip] {model.slug}: complete output already exists at {output_path}", flush=True)
         return output_path
     for alias in model.aliases:
         alias_path = args.results_dir / alias
-        if audit_is_complete(alias_path, expected_samples):
+        if audit_is_complete(
+            alias_path,
+            expected_samples,
+            required_top_k=args.top_k,
+            required_rank_neighbors=args.rank_neighbors,
+        ):
             print(
                 f"[skip] {model.slug}: using complete existing output at {alias_path}",
                 flush=True,
@@ -200,6 +257,10 @@ def run_one_model(
         args.dtype,
         "--temperature",
         str(args.temperature),
+        "--top-k",
+        str(args.top_k),
+        "--rank-neighbors",
+        str(args.rank_neighbors),
     ]
     if args.device_map:
         command.extend(["--device-map", args.device_map])
@@ -232,7 +293,12 @@ def run_one_model(
                 check=False,
             )
 
-        if result.returncode == 0 and audit_is_complete(partial_path, expected_samples):
+        if result.returncode == 0 and audit_is_complete(
+            partial_path,
+            expected_samples,
+            required_top_k=args.top_k,
+            required_rank_neighbors=args.rank_neighbors,
+        ):
             partial_path.replace(output_path)
             print(f"[done] {model.slug}: wrote {output_path}", flush=True)
             return output_path
@@ -269,7 +335,12 @@ def run_one_model_temperatures(
         for temperature in temperatures
     }
     for temperature, output_path in output_paths.items():
-        if not audit_is_complete(output_path, expected_samples):
+        if not audit_is_complete(
+            output_path,
+            expected_samples,
+            required_top_k=args.top_k,
+            required_rank_neighbors=args.rank_neighbors,
+        ):
             break
     else:
         print(f"[skip] {model.slug}: complete outputs already exist for all temperatures", flush=True)
@@ -295,6 +366,10 @@ def run_one_model_temperatures(
         args.dtype,
         "--temperatures",
         ",".join(f"{temperature:g}" for temperature in temperatures),
+        "--top-k",
+        str(args.top_k),
+        "--rank-neighbors",
+        str(args.rank_neighbors),
     ]
     if args.device_map:
         command.extend(["--device-map", args.device_map])
@@ -332,7 +407,13 @@ def run_one_model_temperatures(
             )
 
         complete = result.returncode == 0 and all(
-            audit_is_complete(path, expected_samples) for path in partial_paths.values()
+            audit_is_complete(
+                path,
+                expected_samples,
+                required_top_k=args.top_k,
+                required_rank_neighbors=args.rank_neighbors,
+            )
+            for path in partial_paths.values()
         )
         if complete:
             for temperature, partial_path in partial_paths.items():
@@ -413,8 +494,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--offload-folder", type=Path, default=None, help="Optional folder for unquantized CPU/disk offload.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures for one-pass multi-temperature audits.")
+    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
+    parser.add_argument("--rank-neighbors", type=int, default=DEFAULT_RANK_NEIGHBORS)
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--models", default=None, help="Comma-separated model slugs or Hugging Face IDs.")
+    parser.add_argument(
+        "--models",
+        default=None,
+        help=(
+            "Comma-separated model slugs/Hugging Face IDs, or the preset "
+            "'english-pg19' (17 original PG-19 models excluding Nemotron)."
+        ),
+    )
     parser.add_argument("--retries", type=int, default=1)
     parser.add_argument("--retry-sleep-seconds", type=int, default=60)
     parser.add_argument("--trust-remote-code", action="store_true")
@@ -426,6 +516,10 @@ def main() -> int:
     signal.signal(signal.SIGTERM, request_stop)
 
     args = parse_args()
+    if args.top_k < 0:
+        raise SystemExit("--top-k must be non-negative")
+    if args.rank_neighbors < 0:
+        raise SystemExit("--rank-neighbors must be non-negative")
     
     # If the summary arguments are exactly their defaults, override them to live inside results_dir
     default_summary = ROOT / "results/wcs_summary.model_suite.csv"

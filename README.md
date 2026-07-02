@@ -207,6 +207,15 @@ Phase 2 code is available in [src/wcs/audit.py](src/wcs/audit.py).
 
 Notebook usage is documented in [docs/notebook_usage.md](docs/notebook_usage.md).
 
+For the unattended English PG-19 top-five and rank-neighbor audit, including
+server environment setup and automatic explorer generation, see
+[docs/english_pg19_explorer.md](docs/english_pg19_explorer.md). The server entry
+point is:
+
+```bash
+bash scripts/run_english_pg19_explorer.sh start
+```
+
 CLI example:
 
 ```bash

@@ -1,0 +1,10 @@
+# Reproducible userspace stack for the English PG-19 audit.
+# PyTorch is installed separately by the launcher so it can select a CUDA build
+# compatible with the server's NVIDIA driver.
+transformers==5.12.1
+accelerate==1.14.0
+huggingface-hub==1.19.0
+sentencepiece>=0.2.0,<0.3
+protobuf>=5,<7
+safetensors>=0.6,<1
+packaging>=24,<27

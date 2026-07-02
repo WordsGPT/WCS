@@ -22,7 +22,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from wcs.audit import AuditTokenRow, load_samples, rank_probability_from_logits
+from wcs.audit import (
+    AuditTokenRow,
+    decode_ranked_tokens,
+    load_samples,
+    rank_probability_from_logits,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -152,11 +157,12 @@ def audit_sample(
             outputs = model(input_ids=input_ids, decoder_input_ids=canvas)
             logits = outputs.logits[0, token_index, :]
 
-        rank, probability, top_probability, ratio, cumulative_probability = rank_probability_from_logits(
+        result = rank_probability_from_logits(
             logits,
             int(token_id),
             temperature=temperature,
         )
+        top_predictions = decode_ranked_tokens(tokenizer, result.top_tokens)
         row = AuditTokenRow(
             sample_id=sample["id"],
             model=model_name,
@@ -166,15 +172,20 @@ def audit_sample(
             word_token_index=token_index,
             token_id=int(token_id),
             token_text=tokenizer.decode([token_id]),
-            rank=rank,
-            probability=probability,
-            top_probability=top_probability,
-            probability_ratio_to_top=ratio,
-            cumulative_probability=cumulative_probability,
+            rank=result.rank,
+            probability=result.probability,
+            top_probability=result.top_probability,
+            probability_ratio_to_top=result.probability_ratio_to_top,
+            cumulative_probability=result.cumulative_probability,
             temperature=float(temperature),
             context_token_count=int(sample["context_token_count"]),
             prefix_char_count=len(sample["prefix"]),
             word_token_count=len(word_ids),
+            top_5_tokens=[prediction.token_text for prediction in top_predictions],
+            top_5_probs=[prediction.probability for prediction in top_predictions],
+            rank_neighbors_above=decode_ranked_tokens(tokenizer, result.neighbors_above),
+            rank_neighbors_below=decode_ranked_tokens(tokenizer, result.neighbors_below),
+            rank_neighbor_count=5,
         )
         output = asdict(row)
         output.update(

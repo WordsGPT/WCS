@@ -174,7 +174,7 @@ This works because the model forward pass produces logits once, then the code
 applies `softmax(logits / T)` for each requested temperature.
 
 Important limitation: the audit JSONL files do not store raw logits or full
-vocabulary distributions. They store only derived fields:
+vocabulary distributions. Current schema-v2 audits store derived fields:
 
 - `rank`
 - `probability`
@@ -182,9 +182,14 @@ vocabulary distributions. They store only derived fields:
 - `probability_ratio_to_top`
 - `cumulative_probability`
 - `temperature`
+- `top_5_tokens` and `top_5_probs`
+- `rank_neighbors_above` and `rank_neighbors_below`
 
 Therefore, new exact temperatures such as `0.8` or `1.2` require another audit
 run. Existing outputs can only summarize the temperatures already run.
+
+Legacy audits created before schema v2 do not contain top-five or rank-neighbor
+identities and must be rerun to build a prediction explorer.
 
 Top-k rank is temperature-invariant. Top-p and min-p are temperature-dependent.
 

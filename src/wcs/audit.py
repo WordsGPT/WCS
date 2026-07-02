@@ -13,6 +13,38 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 
+AUDIT_SCHEMA_VERSION = 2
+DEFAULT_TOP_K = 5
+DEFAULT_RANK_NEIGHBORS = 5
+
+
+@dataclass(frozen=True)
+class RankedToken:
+    rank: int
+    token_id: int
+    probability: float
+
+
+@dataclass(frozen=True)
+class TokenPrediction:
+    rank: int
+    token_id: int
+    token_text: str
+    probability: float
+
+
+@dataclass(frozen=True)
+class RankProbabilityResult:
+    rank: int
+    probability: float
+    top_probability: float
+    probability_ratio_to_top: float
+    cumulative_probability: float
+    top_tokens: list[RankedToken]
+    neighbors_above: list[RankedToken]
+    neighbors_below: list[RankedToken]
+
+
 @dataclass(frozen=True)
 class AuditTokenRow:
     sample_id: str
@@ -34,6 +66,10 @@ class AuditTokenRow:
     word_token_count: int
     top_5_tokens: list[str] | None = None
     top_5_probs: list[float] | None = None
+    rank_neighbors_above: list[TokenPrediction] | None = None
+    rank_neighbors_below: list[TokenPrediction] | None = None
+    rank_neighbor_count: int = 0
+    audit_schema_version: int = AUDIT_SCHEMA_VERSION
 
 
 def load_samples(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
@@ -77,50 +113,94 @@ def encode_prefix(tokenizer: Any, prefix: str) -> list[int]:
 
 
 def model_forward_no_cache(model: Any, input_ids: Any) -> Any:
-    try:
-        return model(input_ids=input_ids, use_cache=False)
-    except TypeError as error:
-        if "use_cache" not in str(error):
-            raise
-        return model(input_ids=input_ids)
+    attempts = (
+        {"use_cache": False, "logits_to_keep": 1},
+        {"use_cache": False},
+        {},
+    )
+    for index, kwargs in enumerate(attempts):
+        try:
+            return model(input_ids=input_ids, **kwargs)
+        except TypeError as error:
+            if index == len(attempts) - 1:
+                raise
+            if not any(name in str(error) for name in kwargs):
+                raise
+    raise AssertionError("unreachable")
 
 
 def rank_probability_from_logits(
     logits: Any,
     token_id: int,
     temperature: float = 1.0,
-    top_k: int = 5,
-) -> tuple[int, float, float, float, float, list[int], list[float]]:
+    top_k: int = DEFAULT_TOP_K,
+    neighbor_count: int = DEFAULT_RANK_NEIGHBORS,
+) -> RankProbabilityResult:
     """Return rank/probability diagnostics for one token id.
 
-    Returns:
-        rank, target_probability, top_probability, ratio_to_top, cumulative_probability, top_k_ids, top_k_probs
+    The neighbors are the tokens immediately above and below the target in the
+    complete next-token distribution. They are different from the global top-k
+    whenever the target is outside the top-k.
     """
 
     import torch
 
     if temperature <= 0:
         raise ValueError("temperature must be greater than 0")
+    if top_k < 0:
+        raise ValueError("top_k must be non-negative")
+    if neighbor_count < 0:
+        raise ValueError("neighbor_count must be non-negative")
 
     probs = torch.softmax(logits.float() / temperature, dim=-1)
     target_prob = probs[token_id]
     top_prob = torch.max(probs)
     rank = int(torch.count_nonzero(probs > target_prob).item() + 1)
-    sorted_probs, _ = torch.sort(probs, descending=True)
+    sorted_probs, sorted_ids = torch.sort(probs, descending=True)
     cumulative_probability = float(torch.sum(sorted_probs[:rank]).item())
     ratio = float((target_prob / top_prob).item()) if float(top_prob.item()) > 0 else 0.0
-    
-    top_k_probs, top_k_ids = torch.topk(probs, k=min(top_k, probs.size(-1)))
-    
-    return (
-        rank,
-        float(target_prob.item()),
-        float(top_prob.item()),
-        ratio,
-        cumulative_probability,
-        top_k_ids.tolist(),
-        top_k_probs.tolist(),
+
+    target_positions = torch.nonzero(sorted_ids == token_id, as_tuple=False)
+    if target_positions.numel() != 1:
+        raise ValueError(f"Could not locate token id {token_id} in sorted vocabulary")
+    target_position = int(target_positions[0].item())
+
+    def ranked_slice(start: int, end: int) -> list[RankedToken]:
+        return [
+            RankedToken(
+                rank=index + 1,
+                token_id=int(sorted_ids[index].item()),
+                probability=float(sorted_probs[index].item()),
+            )
+            for index in range(start, end)
+        ]
+
+    top_end = min(top_k, probs.size(-1))
+    above_start = max(0, target_position - neighbor_count)
+    below_end = min(probs.size(-1), target_position + 1 + neighbor_count)
+
+    return RankProbabilityResult(
+        rank=rank,
+        probability=float(target_prob.item()),
+        top_probability=float(top_prob.item()),
+        probability_ratio_to_top=ratio,
+        cumulative_probability=cumulative_probability,
+        top_tokens=ranked_slice(0, top_end),
+        neighbors_above=ranked_slice(above_start, target_position),
+        neighbors_below=ranked_slice(target_position + 1, below_end),
     )
+
+
+def decode_ranked_tokens(tokenizer: Any, tokens: list[RankedToken]) -> list[TokenPrediction]:
+    return [
+        TokenPrediction(
+            rank=token.rank,
+            token_id=token.token_id,
+            token_text=tokenizer.decode([token.token_id]),
+            probability=token.probability,
+        )
+        for token in tokens
+    ]
 
 
 def audit_sample(
@@ -130,6 +210,8 @@ def audit_sample(
     model_name: str,
     device: str | None = None,
     temperature: float = 1.0,
+    top_k: int = DEFAULT_TOP_K,
+    rank_neighbors: int = DEFAULT_RANK_NEIGHBORS,
 ) -> list[AuditTokenRow]:
     import torch
 
@@ -145,10 +227,14 @@ def audit_sample(
         with torch.inference_mode():
             outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
-        rank, probability, top_probability, ratio, cumulative_probability, top_k_ids, top_k_probs = (
-            rank_probability_from_logits(logits, token_id, temperature=temperature)
+        result = rank_probability_from_logits(
+            logits,
+            token_id,
+            temperature=temperature,
+            top_k=top_k,
+            neighbor_count=rank_neighbors,
         )
-        top_k_tokens = [tokenizer.decode([tid]) for tid in top_k_ids]
+        top_predictions = decode_ranked_tokens(tokenizer, result.top_tokens)
         rows.append(
             AuditTokenRow(
                 sample_id=sample["id"],
@@ -159,17 +245,20 @@ def audit_sample(
                 word_token_index=token_index,
                 token_id=int(token_id),
                 token_text=tokenizer.decode([token_id]),
-                rank=rank,
-                probability=probability,
-                top_probability=top_probability,
-                probability_ratio_to_top=ratio,
-                cumulative_probability=cumulative_probability,
+                rank=result.rank,
+                probability=result.probability,
+                top_probability=result.top_probability,
+                probability_ratio_to_top=result.probability_ratio_to_top,
+                cumulative_probability=result.cumulative_probability,
                 temperature=float(temperature),
                 context_token_count=int(sample["context_token_count"]),
                 prefix_char_count=len(sample["prefix"]),
                 word_token_count=len(word_ids),
-                top_5_tokens=top_k_tokens,
-                top_5_probs=top_k_probs,
+                top_5_tokens=[prediction.token_text for prediction in top_predictions],
+                top_5_probs=[prediction.probability for prediction in top_predictions],
+                rank_neighbors_above=decode_ranked_tokens(tokenizer, result.neighbors_above),
+                rank_neighbors_below=decode_ranked_tokens(tokenizer, result.neighbors_below),
+                rank_neighbor_count=rank_neighbors,
             )
         )
         current_ids.append(token_id)
@@ -184,6 +273,8 @@ def audit_sample_temperatures(
     model_name: str,
     temperatures: Iterable[float],
     device: str | None = None,
+    top_k: int = DEFAULT_TOP_K,
+    rank_neighbors: int = DEFAULT_RANK_NEIGHBORS,
 ) -> dict[float, list[AuditTokenRow]]:
     import torch
 
@@ -203,10 +294,14 @@ def audit_sample_temperatures(
             outputs = model_forward_no_cache(model, input_ids)
             logits = outputs.logits[0, -1, :]
         for temperature in temperature_values:
-            rank, probability, top_probability, ratio, cumulative_probability, top_k_ids, top_k_probs = (
-                rank_probability_from_logits(logits, token_id, temperature=temperature)
+            result = rank_probability_from_logits(
+                logits,
+                token_id,
+                temperature=temperature,
+                top_k=top_k,
+                neighbor_count=rank_neighbors,
             )
-            top_k_tokens = [tokenizer.decode([tid]) for tid in top_k_ids]
+            top_predictions = decode_ranked_tokens(tokenizer, result.top_tokens)
             rows_by_temperature[temperature].append(
                 AuditTokenRow(
                     sample_id=sample["id"],
@@ -217,17 +312,24 @@ def audit_sample_temperatures(
                     word_token_index=token_index,
                     token_id=int(token_id),
                     token_text=tokenizer.decode([token_id]),
-                    rank=rank,
-                    probability=probability,
-                    top_probability=top_probability,
-                    probability_ratio_to_top=ratio,
-                    cumulative_probability=cumulative_probability,
+                    rank=result.rank,
+                    probability=result.probability,
+                    top_probability=result.top_probability,
+                    probability_ratio_to_top=result.probability_ratio_to_top,
+                    cumulative_probability=result.cumulative_probability,
                     temperature=float(temperature),
                     context_token_count=int(sample["context_token_count"]),
                     prefix_char_count=len(sample["prefix"]),
                     word_token_count=len(word_ids),
-                    top_5_tokens=top_k_tokens,
-                    top_5_probs=top_k_probs,
+                    top_5_tokens=[prediction.token_text for prediction in top_predictions],
+                    top_5_probs=[prediction.probability for prediction in top_predictions],
+                    rank_neighbors_above=decode_ranked_tokens(
+                        tokenizer, result.neighbors_above
+                    ),
+                    rank_neighbors_below=decode_ranked_tokens(
+                        tokenizer, result.neighbors_below
+                    ),
+                    rank_neighbor_count=rank_neighbors,
                 )
             )
         current_ids.append(token_id)
@@ -242,6 +344,8 @@ def audit_samples(
     model_name: str,
     device: str | None = None,
     temperature: float = 1.0,
+    top_k: int = DEFAULT_TOP_K,
+    rank_neighbors: int = DEFAULT_RANK_NEIGHBORS,
 ) -> Iterator[AuditTokenRow]:
     for sample in samples:
         yield from audit_sample(
@@ -251,6 +355,8 @@ def audit_samples(
             model_name=model_name,
             device=device,
             temperature=temperature,
+            top_k=top_k,
+            rank_neighbors=rank_neighbors,
         )
 
 
@@ -261,6 +367,8 @@ def audit_samples_temperatures(
     model_name: str,
     temperatures: Iterable[float],
     device: str | None = None,
+    top_k: int = DEFAULT_TOP_K,
+    rank_neighbors: int = DEFAULT_RANK_NEIGHBORS,
 ) -> Iterator[tuple[float, AuditTokenRow]]:
     temperature_values = [float(temperature) for temperature in temperatures]
     for sample in samples:
@@ -271,6 +379,8 @@ def audit_samples_temperatures(
             model_name=model_name,
             temperatures=temperature_values,
             device=device,
+            top_k=top_k,
+            rank_neighbors=rank_neighbors,
         )
         for temperature in temperature_values:
             for row in rows_by_temperature[temperature]:
@@ -323,7 +433,12 @@ def load_hf_model_and_tokenizer(
     offload_folder: str | None = None,
 ) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForMultimodalLM,
+        AutoProcessor,
+        AutoTokenizer,
+    )
 
     if trust_remote_code:
         patch_transformers_remote_code_compatibility()
@@ -336,7 +451,19 @@ def load_hf_model_and_tokenizer(
     elif dtype == "float32":
         torch_dtype = torch.float32
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=trust_remote_code)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name, trust_remote_code=trust_remote_code
+        )
+    except (OSError, TypeError, ValueError):
+        processor = AutoProcessor.from_pretrained(
+            model_name, trust_remote_code=trust_remote_code
+        )
+        tokenizer = getattr(processor, "tokenizer", processor)
+        if not hasattr(tokenizer, "encode") or not hasattr(tokenizer, "decode"):
+            raise TypeError(
+                f"{model_name} processor does not expose a text tokenizer"
+            )
     model_kwargs: dict[str, Any] = {
         "dtype": torch_dtype,
         "trust_remote_code": trust_remote_code,
@@ -364,7 +491,7 @@ def load_hf_model_and_tokenizer(
     except ValueError as error:
         if "Unrecognized configuration class" not in str(error):
             raise
-        model = from_pretrained(AutoModel, model_kwargs)
+        model = from_pretrained(AutoModelForMultimodalLM, model_kwargs)
     if not device_map:
         model.to(device)
     model.eval()
@@ -446,12 +573,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="Optional sample limit for smoke tests.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures, e.g. 1.0,0.7,1.5")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=DEFAULT_TOP_K,
+        help="Number of global highest-probability tokens to save per target token.",
+    )
+    parser.add_argument(
+        "--rank-neighbors",
+        type=int,
+        default=DEFAULT_RANK_NEIGHBORS,
+        help="Number of tokens immediately above and below the target rank to save.",
+    )
     parser.add_argument("--trust-remote-code", action="store_true")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.top_k < 0:
+        raise ValueError("--top-k must be non-negative")
+    if args.rank_neighbors < 0:
+        raise ValueError("--rank-neighbors must be non-negative")
     model, tokenizer = load_hf_model_and_tokenizer(
         args.model,
         device=args.device,
@@ -482,6 +625,8 @@ def main() -> None:
             model_name=args.model,
             temperatures=temperatures,
             device=args.device,
+            top_k=args.top_k,
+            rank_neighbors=args.rank_neighbors,
         )
         write_audit_jsonl_by_temperature(rows, output_paths)
         for temperature, output_path in output_paths.items():
@@ -494,6 +639,8 @@ def main() -> None:
             model_name=args.model,
             device=args.device,
             temperature=args.temperature,
+            top_k=args.top_k,
+            rank_neighbors=args.rank_neighbors,
         )
         write_audit_jsonl(rows, args.output)
         print(f"Wrote audit rows to {args.output}")
