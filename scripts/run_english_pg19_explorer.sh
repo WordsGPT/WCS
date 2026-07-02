@@ -187,6 +187,10 @@ setup_environment() {
   fi
   # shellcheck disable=SC1091
   source "$VENV_DIR/bin/activate"
+  # Some hosted Jupyter images set PIP_USER=1 or user=true globally. That is
+  # incompatible with virtual environments, so force isolated venv installs.
+  export PIP_USER=0
+  export PYTHONNOUSERSITE=1
   if [ "$INSTALL_DEPS" = "1" ]; then
     python -m pip install --upgrade pip wheel
     install_torch
