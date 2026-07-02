@@ -16,6 +16,14 @@ class ModelSuiteTests(unittest.TestCase):
         self.assertNotIn("deepseek-v2-lite", slugs)
         self.assertFalse(any("nemotron" in slug for slug in slugs))
 
+    def test_english_pg19_a100_preset_excludes_27b_models(self) -> None:
+        models = select_models("english-pg19-a100")
+        slugs = {model.slug for model in models}
+        self.assertEqual(len(models), 15)
+        self.assertNotIn("gemma3-27b-base", slugs)
+        self.assertNotIn("gemma3-27b-it", slugs)
+        self.assertFalse(any("nemotron" in slug for slug in slugs))
+
     def test_resume_rejects_legacy_audit_without_prediction_schema(self) -> None:
         legacy = {"sample_id": "sample-1", "rank": 3}
         current = {

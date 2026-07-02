@@ -117,6 +117,12 @@ ENGLISH_PG19_MODEL_SLUGS = (
     "deepseek-qwen14b-distill",
 )
 
+ENGLISH_PG19_A100_MODEL_SLUGS = tuple(
+    slug
+    for slug in ENGLISH_PG19_MODEL_SLUGS
+    if slug not in {"gemma3-27b-base", "gemma3-27b-it"}
+)
+
 
 STOP_REQUESTED = False
 
@@ -197,6 +203,9 @@ def select_models(raw: str | None) -> list[ModelSpec]:
         return list(DEFAULT_MODELS)
     if raw.strip() == "english-pg19":
         wanted = set(ENGLISH_PG19_MODEL_SLUGS)
+        return [model for model in DEFAULT_MODELS if model.slug in wanted]
+    if raw.strip() == "english-pg19-a100":
+        wanted = set(ENGLISH_PG19_A100_MODEL_SLUGS)
         return [model for model in DEFAULT_MODELS if model.slug in wanted]
     wanted = {part.strip() for part in raw.split(",") if part.strip()}
     selected = [model for model in DEFAULT_MODELS if model.slug in wanted or model.model_id in wanted]
@@ -502,7 +511,8 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Comma-separated model slugs/Hugging Face IDs, or the preset "
-            "'english-pg19' (17 original PG-19 models excluding Nemotron)."
+            "'english-pg19' (17 original models excluding Nemotron) or "
+            "'english-pg19-a100' (also excludes both 27B models)."
         ),
     )
     parser.add_argument("--retries", type=int, default=1)

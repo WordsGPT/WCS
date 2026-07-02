@@ -29,8 +29,9 @@ bash scripts/run_english_pg19_explorer.sh start
 
 The command creates `.venv-english-pg19`, installs a CUDA-compatible PyTorch
 build and the pinned model stack, verifies the GPU, validates the PG-19 sample
-shape, checks access/config/tokenizers for all 17 models, and starts the
-resumable run in the background.
+shape, checks access/config/tokenizers for all 15 A100-compatible models, and
+starts the resumable run in the background. Gemma 3 27B base/instruct and
+Nemotron are excluded.
 
 Monitor it with:
 
@@ -70,10 +71,11 @@ LIMIT=5 bash scripts/run_english_pg19_explorer.sh run
 
 ## Configuration overrides
 
-The defaults reproduce the English paper suite without Nemotron:
+The defaults reproduce the A100-compatible English paper suite without
+Nemotron or the two Gemma 3 27B checkpoints:
 
 ```text
-MODELS=english-pg19
+MODELS=english-pg19-a100
 TOP_K=5
 RANK_NEIGHBORS=5
 DTYPE=bfloat16

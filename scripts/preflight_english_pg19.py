@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=ROOT / "data/processed/samples.jsonl",
     )
-    parser.add_argument("--models", default="english-pg19")
+    parser.add_argument("--models", default="english-pg19-a100")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--skip-hub-check", action="store_true")
     return parser.parse_args()
