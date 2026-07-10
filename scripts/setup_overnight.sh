@@ -4,6 +4,9 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+export PIP_USER=0
+export PYTHONNOUSERSITE=1
+
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV="${VENV:-$ROOT/.venv}"
 LOG_DIR="${LOG_DIR:-$ROOT/logs/fineweb_overnight}"
