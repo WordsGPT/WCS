@@ -313,21 +313,22 @@ Transformers than the first environment had.
 
 ## Git Notes
 
-This workspace uses an unusual git setup:
+This workspace now uses the standard `.git` directory, so normal Git commands
+work from the repository root:
 
 ```bash
-git --git-dir=.git-real --work-tree=. status
-git --git-dir=.git-real --work-tree=. add <files>
-git --git-dir=.git-real --work-tree=. commit -m "message"
-git --git-dir=.git-real --work-tree=. push
+git status
+git add <files>
+git commit -m "message"
+git push
 ```
 
-The remote prints a moved-repository notice but pushes have worked.
+The remote may print a moved-repository notice, but pushes have worked.
 
 Ignored generated JSONL files sometimes need force-add:
 
 ```bash
-git --git-dir=.git-real --work-tree=. add -f data/processed/samples.mobydick.100x5.jsonl
+git add -f data/processed/samples.mobydick.100x5.jsonl
 ```
 
 ## Current Caveats
