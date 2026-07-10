@@ -336,9 +336,10 @@
   <header>
     <div>
       <h1>WCS Temperature Comparison</h1>
-      <p class="subhead">Interactive temperature view from <code>wcs_word_summary_punct_all_temperatures.csv</code>.</p>
+      <p class="subhead">Interactive temperature view from <code>wcs_word_summary_punct_all_temperatures.csv</code>, with exact top-k coverage from k=1–100.</p>
     </div>
     <div style="display:flex; gap:16px; align-items:center;">
+      <a href="temperature-explainer.html">Temperature explainer</a>
       <a href="index.html">Decoder curves</a>
       <a href="mobydick.html">Dataset comparison</a>
       <a href="lyrics.html">Lyrics comparison</a>
@@ -650,7 +651,7 @@
     function updateParameters() {
       const select = document.getElementById("parameterSelect");
       const values = Array.from(new Set(state.rows.filter(row => row.decoder === state.decoder).map(row => row.parameter))).sort((a, b) => a - b);
-      const preferred = state.decoder === "top_p" ? 0.95 : state.decoder === "top_k" ? 20 : 0.05;
+      const preferred = state.decoder === "top_p" ? 0.95 : state.decoder === "top_k" ? 50 : 0.05;
       state.parameter = values.includes(state.parameter) ? state.parameter : (values.includes(preferred) ? preferred : values[0]);
       select.innerHTML = "";
       values.forEach(value => {
