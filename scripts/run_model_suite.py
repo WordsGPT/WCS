@@ -270,6 +270,7 @@ def run_one_model(
         str(args.top_k),
         "--rank-neighbors",
         str(args.rank_neighbors),
+        "--resume",
     ]
     if args.device_map:
         command.extend(["--device-map", args.device_map])
@@ -284,9 +285,6 @@ def run_one_model(
 
     quoted = " ".join(shlex.quote(part) for part in command)
     for attempt in range(1, args.retries + 2):
-        if partial_path.exists():
-            partial_path.unlink()
-
         started = time.strftime("%Y-%m-%d %H:%M:%S")
         print(f"[run] {model.slug} attempt {attempt}: {model.model_id}", flush=True)
         with log_path.open("a", encoding="utf-8") as log:
@@ -379,6 +377,7 @@ def run_one_model_temperatures(
         str(args.top_k),
         "--rank-neighbors",
         str(args.rank_neighbors),
+        "--resume",
     ]
     if args.device_map:
         command.extend(["--device-map", args.device_map])
@@ -393,10 +392,6 @@ def run_one_model_temperatures(
 
     quoted = " ".join(shlex.quote(part) for part in command)
     for attempt in range(1, args.retries + 2):
-        for partial_path in partial_paths.values():
-            if partial_path.exists():
-                partial_path.unlink()
-
         started = time.strftime("%Y-%m-%d %H:%M:%S")
         print(
             f"[run] {model.slug} multi-temperature attempt {attempt}: {model.model_id}",

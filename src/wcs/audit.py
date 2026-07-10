@@ -387,24 +387,32 @@ def audit_samples_temperatures(
                 yield temperature, row
 
 
-def write_audit_jsonl(rows: Iterable[AuditTokenRow], output_path: Path) -> None:
+def write_audit_jsonl(
+    rows: Iterable[AuditTokenRow], output_path: Path, *, append: bool = False
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as handle:
+    with output_path.open("a" if append else "w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+            handle.flush()
 
 
 def write_audit_jsonl_by_temperature(
     rows: Iterable[tuple[float, AuditTokenRow]],
     output_paths: dict[float, Path],
+    *,
+    append: bool = False,
 ) -> None:
     handles = {}
     try:
         for temperature, output_path in output_paths.items():
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            handles[temperature] = output_path.open("w", encoding="utf-8")
+            handles[temperature] = output_path.open(
+                "a" if append else "w", encoding="utf-8"
+            )
         for temperature, row in rows:
             handles[temperature].write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+            handles[temperature].flush()
     finally:
         for handle in handles.values():
             handle.close()
@@ -421,6 +429,59 @@ def parse_temperature_list(raw: str) -> list[float]:
 
 def temperature_slug(temperature: float) -> str:
     return f"t{temperature:g}".replace(".", "p")
+
+
+def completed_sample_ids(path: Path) -> set[str]:
+    """Return sample ids whose token rows form one complete forced path."""
+    if not path.exists():
+        return set()
+    groups: dict[str, list[dict[str, Any]]] = {}
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                    groups.setdefault(str(row["sample_id"]), []).append(row)
+                except (json.JSONDecodeError, KeyError):
+                    continue
+    except OSError:
+        return set()
+    complete: set[str] = set()
+    for sample_id, rows in groups.items():
+        expected = int(rows[0].get("word_token_count", 0))
+        indices = {int(row["word_token_index"]) for row in rows}
+        if expected > 0 and indices == set(range(expected)) and len(rows) == expected:
+            complete.add(sample_id)
+    return complete
+
+
+def retain_complete_samples(path: Path, sample_ids: set[str]) -> None:
+    """Atomically discard malformed, partial, duplicate, or non-common groups."""
+    if not path.exists():
+        return
+    groups: dict[str, list[dict[str, Any]]] = {}
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                    groups.setdefault(str(row["sample_id"]), []).append(row)
+                except (json.JSONDecodeError, KeyError):
+                    continue
+    except OSError:
+        groups = {}
+    temporary = path.with_suffix(path.suffix + ".resume-tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for sample_id, rows in groups.items():
+            if sample_id not in sample_ids:
+                continue
+            expected = int(rows[0].get("word_token_count", 0))
+            by_index = {int(row["word_token_index"]): row for row in rows}
+            if expected <= 0 or set(by_index) != set(range(expected)):
+                continue
+            for index in range(expected):
+                handle.write(json.dumps(by_index[index], ensure_ascii=False) + "\n")
+    temporary.replace(path)
 
 
 def load_hf_model_and_tokenizer(
@@ -586,6 +647,11 @@ def parse_args() -> argparse.Namespace:
         help="Number of tokens immediately above and below the target rank to save.",
     )
     parser.add_argument("--trust-remote-code", action="store_true")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after complete samples already present in the output file(s).",
+    )
     return parser.parse_args()
 
 
@@ -618,6 +684,13 @@ def main() -> None:
             )
             for temperature in temperatures
         }
+        if args.resume:
+            completed_sets = [completed_sample_ids(path) for path in output_paths.values()]
+            completed = set.intersection(*completed_sets) if completed_sets else set()
+            for path in output_paths.values():
+                retain_complete_samples(path, completed)
+            samples = [sample for sample in samples if str(sample["id"]) not in completed]
+            print(f"Resuming after {len(completed)} complete samples; {len(samples)} remain")
         rows = audit_samples_temperatures(
             model=model,
             tokenizer=tokenizer,
@@ -628,10 +701,15 @@ def main() -> None:
             top_k=args.top_k,
             rank_neighbors=args.rank_neighbors,
         )
-        write_audit_jsonl_by_temperature(rows, output_paths)
+        write_audit_jsonl_by_temperature(rows, output_paths, append=args.resume)
         for temperature, output_path in output_paths.items():
             print(f"Wrote T={temperature:g} audit rows to {output_path}")
     else:
+        if args.resume:
+            completed = completed_sample_ids(args.output)
+            retain_complete_samples(args.output, completed)
+            samples = [sample for sample in samples if str(sample["id"]) not in completed]
+            print(f"Resuming after {len(completed)} complete samples; {len(samples)} remain")
         rows = audit_samples(
             model=model,
             tokenizer=tokenizer,
@@ -642,7 +720,7 @@ def main() -> None:
             top_k=args.top_k,
             rank_neighbors=args.rank_neighbors,
         )
-        write_audit_jsonl(rows, args.output)
+        write_audit_jsonl(rows, args.output, append=args.resume)
         print(f"Wrote audit rows to {args.output}")
 
 

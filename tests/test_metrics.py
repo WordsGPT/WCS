@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from wcs.metrics import summarize_wcs, summarize_wcs_by_target_word, write_summary_csv
+from wcs.metrics import DEFAULT_TOP_K, summarize_wcs, summarize_wcs_by_target_word, write_summary_csv
 
 
 def audit_row(
@@ -37,6 +37,9 @@ def audit_row(
 
 
 class MetricsTest(unittest.TestCase):
+    def test_default_top_k_schedule(self) -> None:
+        self.assertEqual(DEFAULT_TOP_K, tuple(range(1, 21)) + tuple(range(25, 81, 5)))
+
     def test_summarize_wcs_requires_all_word_tokens_to_survive(self) -> None:
         with TemporaryDirectory() as directory:
             audit_path = Path(directory) / "audit.jsonl"

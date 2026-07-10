@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 
-DEFAULT_TOP_K = tuple(range(1, 21))
+DEFAULT_TOP_K = tuple(range(1, 21)) + tuple(range(25, 81, 5))
 DEFAULT_TOP_P = (0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99)
 DEFAULT_MIN_P = (0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10)
 

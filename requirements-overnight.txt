@@ -1,0 +1,8 @@
+# Keep this small and pinned: torch is installed separately to match the server CUDA driver.
+accelerate==1.14.0
+datasets==5.0.0
+huggingface-hub==1.11.0
+matplotlib==3.10.8
+numpy==2.4.3
+pyarrow==23.0.1
+transformers==5.5.4

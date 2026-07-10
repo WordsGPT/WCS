@@ -7,9 +7,14 @@ import torch
 from wcs.audit import (
     audit_sample,
     audit_sample_temperatures,
+    completed_sample_ids,
+    retain_complete_samples,
     patch_transformers_remote_code_compatibility,
     rank_probability_from_logits,
 )
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import json
 
 
 class FakeOutput:
@@ -54,6 +59,21 @@ class FakeTokenizer:
 
 
 class AuditTest(unittest.TestCase):
+    def test_completed_sample_ids_ignores_partial_paths(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "audit.jsonl"
+            rows = [
+                {"sample_id": "done", "word_token_index": 0, "word_token_count": 2},
+                {"sample_id": "done", "word_token_index": 1, "word_token_count": 2},
+                {"sample_id": "partial", "word_token_index": 0, "word_token_count": 2},
+            ]
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+            self.assertEqual(completed_sample_ids(path), {"done"})
+            retain_complete_samples(path, {"done"})
+            retained = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertEqual(len(retained), 2)
+            self.assertEqual({row["sample_id"] for row in retained}, {"done"})
+
     def test_rank_probability_from_logits(self) -> None:
         logits = torch.tensor([0.0, 3.0, 1.0, 2.0])
         result = rank_probability_from_logits(logits, token_id=3, neighbor_count=1)
