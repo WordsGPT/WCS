@@ -14,12 +14,19 @@ from statistics import fmean, median
 
 
 MODEL_LABELS = {
-    "gemma3-12b-base": "Gemma 3 12B Base",
-    "gemma3-12b-it": "Gemma 3 12B Instruct",
     "llama31-8b-base": "Llama 3.1 8B Base",
     "llama31-8b-instruct": "Llama 3.1 8B Instruct",
     "mistral7b-v03-base": "Mistral 7B Base",
     "mistral7b-v03-instruct": "Mistral 7B Instruct",
+    "qwen35-9b-base": "Qwen 3.5 9B Base",
+    "qwen35-9b-instruct": "Qwen 3.5 9B Instruct",
+    "qwen25-14b-base": "Qwen 2.5 14B Base",
+    "qwen25-14b-instruct": "Qwen 2.5 14B Instruct",
+    "gemma3-12b-base": "Gemma 3 12B Base",
+    "gemma3-12b-it": "Gemma 3 12B Instruct",
+    "gemma4-e4b-base": "Gemma 4 E4B Base",
+    "gemma4-e4b-it": "Gemma 4 E4B Instruct",
+    "deepseek-qwen14b-distill": "DeepSeek R1 Distill Qwen 14B",
 }
 
 ENDPOINTS = (

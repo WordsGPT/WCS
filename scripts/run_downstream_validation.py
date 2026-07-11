@@ -98,73 +98,96 @@ def continuation_instruction(prefix: str, requested_words: int) -> str:
     )
 
 
-def prompt_for_sample(
-    tokenizer: object,
-    model_spec: ModelSpec,
-    sample: dict,
-    requested_words: int,
-) -> tuple[str, list[int], str]:
-    if model_spec.variant != "instruct":
-        prompt = sample["prefix"]
-        return (
-            prompt,
-            list(tokenizer.encode(prompt, add_special_tokens=True)),
-            "raw_continuation",
-        )
-    if not hasattr(tokenizer, "apply_chat_template"):
-        raise TypeError(f"{model_spec.model_id} tokenizer has no chat template support")
-    messages = [
-        {
-            "role": "user",
-            "content": continuation_instruction(sample["prefix"], requested_words),
-        }
-    ]
-    prompt = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    token_ids = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-    )
-    if isinstance(token_ids, Mapping):
-        token_ids = token_ids["input_ids"]
-    if hasattr(token_ids, "tolist"):
-        token_ids = token_ids.tolist()
-    if token_ids and isinstance(token_ids[0], (list, tuple)):
-        if len(token_ids) != 1:
-            raise ValueError("Expected one chat-template input sequence")
-        token_ids = token_ids[0]
-    return (
-        str(prompt),
-        [int(token_id) for token_id in token_ids],
-        "chat_continuation_instruction",
-    )
+def _is_chat_model(model_spec: ModelSpec) -> bool:
+    """Return True for instruct/distill variants that need chat templates."""
+    return model_spec.variant in ("instruct", "distill")
 
 
-def prepared_samples(
+def _raw_prefix_samples(
     tokenizer: object,
-    model_spec: ModelSpec,
     samples: list[dict],
-    requested_words: int,
-) -> tuple[list[dict], str]:
+) -> list[dict]:
+    """Prepare samples using only the raw FineWeb prefix (no chat template).
+
+    Used for WCS audit so the target word is tested as the literal next token
+    after the original passage, regardless of model variant.
+    """
     prepared = []
-    modes = set()
     for sample in samples:
-        prompt, token_ids, mode = prompt_for_sample(
-            tokenizer, model_spec, sample, requested_words
-        )
+        prompt = sample["prefix"]
+        token_ids = list(tokenizer.encode(prompt, add_special_tokens=True))
         transformed = dict(sample)
         transformed["prefix"] = prompt
         transformed["_prefix_token_ids"] = token_ids
         transformed["context_token_count"] = len(token_ids)
         prepared.append(transformed)
-        modes.add(mode)
-    if len(modes) != 1:
-        raise AssertionError(f"Mixed prompt modes for {model_spec.slug}: {modes}")
-    return prepared, modes.pop()
+    return prepared
+
+
+def _chat_prefix_samples(
+    tokenizer: object,
+    model_spec: ModelSpec,
+    samples: list[dict],
+    requested_words: int,
+) -> list[dict]:
+    """Prepare samples using a chat template with continuation instruction.
+
+    Used for open generation so instruct/distill models produce coherent text.
+    """
+    if not hasattr(tokenizer, "apply_chat_template"):
+        raise TypeError(f"{model_spec.model_id} tokenizer has no chat template support")
+    prepared = []
+    for sample in samples:
+        messages = [
+            {
+                "role": "user",
+                "content": continuation_instruction(sample["prefix"], requested_words),
+            }
+        ]
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        token_ids = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+        )
+        if isinstance(token_ids, Mapping):
+            token_ids = token_ids["input_ids"]
+        if hasattr(token_ids, "tolist"):
+            token_ids = token_ids.tolist()
+        if token_ids and isinstance(token_ids[0], (list, tuple)):
+            if len(token_ids) != 1:
+                raise ValueError("Expected one chat-template input sequence")
+            token_ids = token_ids[0]
+        transformed = dict(sample)
+        transformed["prefix"] = str(prompt)
+        transformed["_prefix_token_ids"] = [int(tid) for tid in token_ids]
+        transformed["context_token_count"] = len(token_ids)
+        prepared.append(transformed)
+    return prepared
+
+
+def prepared_samples_for_audit(
+    tokenizer: object,
+    samples: list[dict],
+) -> tuple[list[dict], str]:
+    """Always use raw prefix for WCS audit — measures next-token reachability."""
+    return _raw_prefix_samples(tokenizer, samples), "raw_continuation"
+
+
+def prepared_samples_for_generation(
+    tokenizer: object,
+    model_spec: ModelSpec,
+    samples: list[dict],
+    requested_words: int,
+) -> tuple[list[dict], str]:
+    """Use chat template for instruct/distill, raw prefix for base models."""
+    if _is_chat_model(model_spec):
+        return _chat_prefix_samples(tokenizer, model_spec, samples, requested_words), "chat_continuation_instruction"
+    return _raw_prefix_samples(tokenizer, samples), "raw_continuation"
 
 
 def generation_key(row: dict) -> tuple[str, float, str, float]:
@@ -563,6 +586,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--offload-folder", type=Path, default=None)
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--resume", action=argparse.BooleanOptionalAction, default=True)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--wcs-only", action="store_true", default=False,
+        help="Run only the WCS forced-path audit (skip open generation).",
+    )
+    mode.add_argument(
+        "--generation-only", action="store_true", default=False,
+        help="Run only the open generation (skip WCS audit).",
+    )
     return parser.parse_args()
 
 
@@ -576,9 +608,13 @@ def main() -> None:
     conditions = conditions_from_args(args)
     samples = select_contexts(load_samples(args.samples), args.contexts, args.seed)
     models = select_models(args.models)
+    run_wcs = not args.generation_only
+    run_gen = not args.wcs_only
+    phase_label = "wcs-only" if args.wcs_only else "generation-only" if args.generation_only else "full"
     print(
         f"[start] {len(models)} models, {len(samples)} contexts, "
-        f"{len(temperatures)} temperatures, {len(conditions)} conditions",
+        f"{len(temperatures)} temperatures, {len(conditions)} conditions "
+        f"(mode={phase_label})",
         flush=True,
     )
     audit_paths = []
@@ -593,45 +629,61 @@ def main() -> None:
             max_memory=parse_max_memory(args.max_memory),
             offload_folder=str(args.offload_folder) if args.offload_folder else None,
         )
-        samples_for_model, prompt_mode = prepared_samples(
-            tokenizer, model_spec, samples, args.words
-        )
+
         audit_path = args.results_dir / "conditioned_wcs" / f"audit.{model_spec.slug}.jsonl"
-        write_conditioned_audit(
-            model,
-            tokenizer,
-            model_spec,
-            samples_for_model,
-            temperatures,
-            audit_path,
-            prompt_mode,
-        )
-        audit_paths.append(audit_path)
-        generation_paths.append(
-            generate_model(
+        gen_path = args.results_dir / "generations" / f"generation.{model_spec.slug}.jsonl"
+
+        if run_wcs:
+            # WCS audit: always raw prefix so the target word is the literal next token
+            audit_samples, audit_prompt_mode = prepared_samples_for_audit(
+                tokenizer, samples
+            )
+            write_conditioned_audit(
                 model,
                 tokenizer,
                 model_spec,
-                samples_for_model,
+                audit_samples,
+                temperatures,
+                audit_path,
+                audit_prompt_mode,
+            )
+        if audit_path.exists():
+            audit_paths.append(audit_path)
+
+        if run_gen:
+            # Generation: chat template for instruct/distill, raw prefix for base
+            gen_samples, gen_prompt_mode = prepared_samples_for_generation(
+                tokenizer, model_spec, samples, args.words
+            )
+            gen_path = generate_model(
+                model,
+                tokenizer,
+                model_spec,
+                gen_samples,
                 temperatures,
                 conditions,
                 args,
-                prompt_mode,
+                gen_prompt_mode,
             )
-        )
+        if gen_path.exists():
+            generation_paths.append(gen_path)
+
         del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     wcs_summary = args.results_dir / "conditioned_wcs" / "wcs_summary.csv"
-    write_summary_csv(summarize_wcs(audit_paths), wcs_summary)
-    diversity_summary = args.results_dir / "lexical_diversity_by_config.csv"
-    diversity_rows = summarize_generations(generation_paths, diversity_summary)
-    add_correlations(
-        wcs_summary,
-        diversity_rows,
-        args.results_dir / "wcs_diversity_correlations.csv",
-    )
+    if audit_paths:
+        write_summary_csv(summarize_wcs(audit_paths), wcs_summary)
+    if generation_paths:
+        diversity_summary = args.results_dir / "lexical_diversity_by_config.csv"
+        diversity_rows = summarize_generations(generation_paths, diversity_summary)
+        if wcs_summary.exists():
+            add_correlations(
+                wcs_summary,
+                diversity_rows,
+                args.results_dir / "wcs_diversity_correlations.csv",
+            )
     print(f"[done] results={args.results_dir}", flush=True)
 
 
