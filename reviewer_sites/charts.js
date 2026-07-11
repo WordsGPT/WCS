@@ -1,0 +1,32 @@
+(function(){
+  const NS="http://www.w3.org/2000/svg";
+  const palette=["#d66b31","#e3a163","#176b52","#65a98e","#3667a6","#7f9fc8"];
+  const tokenPalette={1:"#176b52",2:"#3667a6",3:"#d66b31",4:"#a7463b",5:"#76548e"};
+  const tooltip=document.createElement("div"); tooltip.className="tooltip"; document.body.appendChild(tooltip);
+  function node(name,attrs={}){const el=document.createElementNS(NS,name);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);return el}
+  function extent(vals){return [Math.min(...vals),Math.max(...vals)]}
+  function scale(a,b,c,d){return x=>c+(x-a)*(d-c)/((b-a)||1)}
+  function showTip(event,html){tooltip.innerHTML=html;tooltip.style.left=event.clientX+"px";tooltip.style.top=event.clientY+"px";tooltip.style.opacity=1}
+  function hideTip(){tooltip.style.opacity=0}
+  function axes(svg,w,h,m,xDomain,yDomain,xLabel,yLabel,reverseX=false){
+    const [x0,x1]=xDomain,[y0,y1]=yDomain; const sx=reverseX?scale(x0,x1,w-m.r,m.l):scale(x0,x1,m.l,w-m.r), sy=scale(y0,y1,h-m.b,m.t);
+    for(let i=0;i<=5;i++){const y=y0+(y1-y0)*i/5,py=sy(y);svg.append(node("line",{x1:m.l,x2:w-m.r,y1:py,y2:py,class:"grid"}));const t=node("text",{x:m.l-8,y:py+4,"text-anchor":"end"});t.textContent=y.toFixed(2);svg.append(t)}
+    for(let i=0;i<=6;i++){const x=x0+(x1-x0)*i/6,px=sx(x);const t=node("text",{x:px,y:h-m.b+18,"text-anchor":"middle"});t.textContent=(Math.abs(x)>=10?x.toFixed(0):x.toFixed(2).replace(/0+$/,'').replace(/\.$/,''));svg.append(t)}
+    svg.append(node("line",{x1:m.l,x2:w-m.r,y1:h-m.b,y2:h-m.b,class:"axis"}));svg.append(node("line",{x1:m.l,x2:m.l,y1:m.t,y2:h-m.b,class:"axis"}));
+    let tx=node("text",{x:(m.l+w-m.r)/2,y:h-8,"text-anchor":"middle"});tx.textContent=xLabel;svg.append(tx);let ty=node("text",{transform:`translate(15 ${(m.t+h-m.b)/2}) rotate(-90)`,"text-anchor":"middle"});ty.textContent=yLabel;svg.append(ty);return {sx,sy}
+  }
+  function lineChart(svg,rows,options={}){
+    svg.innerHTML="";const w=svg.clientWidth||1100,h=svg.clientHeight||500,m={l:58,r:20,t:18,b:48};svg.setAttribute("viewBox",`0 0 ${w} ${h}`);
+    const xs=rows.map(r=>+r.parameter), lows=rows.map(r=>+(r.ci95_low??r.wcs)), highs=rows.map(r=>+(r.ci95_high??r.wcs));let [xmin,xmax]=extent(xs),ymin=Math.min(...lows),ymax=Math.max(...highs);const pad=Math.max(.025,(ymax-ymin)*.1);ymin=Math.max(0,ymin-pad);ymax=Math.min(1,ymax+pad);
+    const {sx,sy}=axes(svg,w,h,m,[xmin,xmax],[ymin,ymax],options.xLabel||"Parameter",options.yLabel||"WCS",options.reverseX);
+    const labels=[...new Set(rows.map(r=>r.model_label))];labels.forEach((label,i)=>{const color=palette[i%palette.length],rr=rows.filter(r=>r.model_label===label).sort((a,b)=>+a.parameter-+b.parameter);const d=rr.map((r,j)=>`${j?'L':'M'}${sx(+r.parameter)},${sy(+r.wcs)}`).join(' ');svg.append(node("path",{d,class:"series-line",stroke:color}));rr.forEach(r=>{svg.append(node("line",{x1:sx(+r.parameter),x2:sx(+r.parameter),y1:sy(+r.ci95_low),y2:sy(+r.ci95_high),class:"ci",stroke:color}));const c=node("circle",{cx:sx(+r.parameter),cy:sy(+r.wcs),r:3.5,fill:color,class:"point"});c.addEventListener("mousemove",e=>showTip(e,`<b>${label}</b><br>${options.parameterName||r.decoder}: ${+r.parameter}<br>WCS: ${(+r.wcs).toFixed(3)}<br>95% CI: [${(+r.ci95_low).toFixed(3)}, ${(+r.ci95_high).toFixed(3)}]`));c.addEventListener("mouseleave",hideTip);svg.append(c)})});return labels.map((label,i)=>({label,color:palette[i%palette.length]}))
+  }
+  function facetScatter(container,rows,metric){
+    container.innerHTML="";const models=[...new Set(rows.map(r=>r.model_label))];const markers={top_k:"circle",top_p:"rect",min_p:"triangle"};models.forEach(label=>{const card=document.createElement("div");card.className="facet";card.innerHTML=`<h3>${label}</h3>`;const svg=node("svg");card.append(svg);container.append(card);const rr=rows.filter(r=>r.model_label===label),w=360,h=285,m={l:46,r:12,t:10,b:38};svg.setAttribute("viewBox",`0 0 ${w} ${h}`);let [ymin,ymax]=extent(rr.map(r=>+r[metric]));let p=(ymax-ymin)*.14||.02;ymin-=p;ymax+=p;const {sx,sy}=axes(svg,w,h,m,[0,1],[ymin,ymax],"WCS",metric.includes("ttr")?"Mean TTR":"Mean MTLD");rr.forEach(r=>{const color=+r.temperature===.7?"#2563eb":"#dc2626",x=sx(+r.wcs),y=sy(+r[metric]);let shape;if(markers[r.decoder]==="rect")shape=node("rect",{x:x-4,y:y-4,width:8,height:8,fill:color,class:"point"});else if(markers[r.decoder]==="triangle")shape=node("path",{d:`M${x},${y-5} L${x+5},${y+4} L${x-5},${y+4} Z`,fill:color,class:"point"});else shape=node("circle",{cx:x,cy:y,r:4.5,fill:color,class:"point"});shape.addEventListener("mousemove",e=>showTip(e,`<b>${label}</b><br>T=${r.temperature}; ${r.decoder.replace('_','-')}=${r.parameter}<br>WCS: ${(+r.wcs).toFixed(3)}<br>${metric.toUpperCase()}: ${(+r[metric]).toFixed(3)}<br>Completion: ${(100*r.completion_rate).toFixed(0)}%`));shape.addEventListener("mouseleave",hideTip);svg.append(shape)})})
+  }
+  function strataFacets(container,rows,options={}){
+    container.innerHTML="";const models=[...new Set(rows.map(r=>r.model_label))];models.forEach(label=>{const card=document.createElement("div");card.className="facet";card.innerHTML=`<h3>${label}</h3>`;const svg=node("svg");card.append(svg);container.append(card);const rr=rows.filter(r=>r.model_label===label),w=360,h=285,m={l:45,r:12,t:10,b:38};svg.setAttribute("viewBox",`0 0 ${w} ${h}`);const xs=rr.map(r=>+r.parameter);const {sx,sy}=axes(svg,w,h,m,extent(xs),[0,1],options.xLabel||"Parameter","WCS",options.reverseX);[...new Set(rr.map(r=>+r.token_count))].sort((a,b)=>a-b).forEach(tc=>{const color=tokenPalette[tc]||"#777",sr=rr.filter(r=>+r.token_count===tc).sort((a,b)=>+a.parameter-+b.parameter),d=sr.map((r,j)=>`${j?'L':'M'}${sx(+r.parameter)},${sy(+r.wcs)}`).join(' ');svg.append(node("path",{d,class:"series-line",stroke:color}));sr.forEach(r=>{const c=node("circle",{cx:sx(+r.parameter),cy:sy(+r.wcs),r:3,fill:color,class:"point"});c.addEventListener("mousemove",e=>showTip(e,`<b>${label}</b><br>${tc} token${tc===1?'':'s'} · ${r.words} words / ${r.contexts} contexts<br>${r.decoder.replace('_','-')}: ${r.parameter}<br>WCS: ${(+r.wcs).toFixed(3)}<br>95% CI: [${(+r.ci95_low).toFixed(3)}, ${(+r.ci95_high).toFixed(3)}]`));c.addEventListener("mouseleave",hideTip);svg.append(c)})})})
+  }
+  function legend(el,items){el.innerHTML=items.map(x=>`<span class="legend-item"><i class="swatch" style="--swatch:${x.color}"></i>${x.label}</span>`).join('')}
+  window.WCSCharts={lineChart,facetScatter,strataFacets,legend,palette,tokenPalette};
+})();
