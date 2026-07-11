@@ -16,6 +16,7 @@ import math
 import random
 import sys
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import fmean, median, pstdev
@@ -128,8 +129,14 @@ def prompt_for_sample(
         tokenize=True,
         add_generation_prompt=True,
     )
+    if isinstance(token_ids, Mapping):
+        token_ids = token_ids["input_ids"]
     if hasattr(token_ids, "tolist"):
         token_ids = token_ids.tolist()
+    if token_ids and isinstance(token_ids[0], (list, tuple)):
+        if len(token_ids) != 1:
+            raise ValueError("Expected one chat-template input sequence")
+        token_ids = token_ids[0]
     return (
         str(prompt),
         [int(token_id) for token_id in token_ids],

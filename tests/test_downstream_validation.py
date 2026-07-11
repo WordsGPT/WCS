@@ -6,7 +6,16 @@ from scripts.run_downstream_validation import (
     Condition,
     average_ranks,
     permutation_correlation,
+    prompt_for_sample,
 )
+from scripts.run_model_suite import ModelSpec
+
+
+class MappingChatTokenizer:
+    def apply_chat_template(self, messages, *, tokenize, add_generation_prompt):
+        if tokenize:
+            return {"input_ids": [[11, 12, 13]]}
+        return "<chat>prompt"
 
 
 class DownstreamValidationTest(unittest.TestCase):
@@ -32,6 +41,18 @@ class DownstreamValidationTest(unittest.TestCase):
         self.assertAlmostEqual(statistic, 1.0)
         self.assertGreater(p_value, 0.0)
         self.assertLessEqual(p_value, 1.0)
+
+    def test_chat_template_accepts_mapping_input_ids(self) -> None:
+        model = ModelSpec("fixture-it", "fixture/model", "fixture", "instruct")
+        prompt, token_ids, mode = prompt_for_sample(
+            MappingChatTokenizer(),
+            model,
+            {"prefix": "A passage"},
+            requested_words=100,
+        )
+        self.assertEqual(prompt, "<chat>prompt")
+        self.assertEqual(token_ids, [11, 12, 13])
+        self.assertEqual(mode, "chat_continuation_instruction")
 
 
 if __name__ == "__main__":
