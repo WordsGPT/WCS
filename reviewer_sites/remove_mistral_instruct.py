@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 
 DATA_DIR = Path("reviewer_sites/data")
-EXCLUDE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-EXCLUDE_SLUG = "llama31-8b-instruct"
-EXCLUDE_LABEL = "Llama 3.1 8B Instruct"
+EXCLUDE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+EXCLUDE_SLUG = "mistral7b-v03-instruct"
+EXCLUDE_LABEL = "Mistral 7B Instruct"
 
 def holm_correction(raw_pvals):
     n = len(raw_pvals)
