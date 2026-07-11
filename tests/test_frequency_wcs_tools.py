@@ -52,6 +52,7 @@ class FrequencyWcsToolTests(unittest.TestCase):
                 {
                     "word_token_index": 0,
                     "rank": 1,
+                    "probability": 0.5,
                     "cumulative_probability": 0.5,
                     "probability_ratio_to_top": 1.0,
                     "word_token_count": 1,
@@ -61,6 +62,7 @@ class FrequencyWcsToolTests(unittest.TestCase):
                 {
                     "word_token_index": 0,
                     "rank": 100,
+                    "probability": 0.01,
                     "cumulative_probability": 0.99,
                     "probability_ratio_to_top": 0.001,
                     "word_token_count": 3,

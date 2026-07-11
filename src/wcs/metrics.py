@@ -83,7 +83,14 @@ def word_survives_top_k(rows: list[dict], k: int) -> bool:
 
 
 def word_survives_top_p(rows: list[dict], p: float) -> bool:
-    return all(float(row["cumulative_probability"]) <= p for row in rows)
+    # Nucleus sampling retains the first token that takes cumulative mass to
+    # (or beyond) ``p``.  Therefore a target survives when the mass of tokens
+    # ranked strictly above it is at most ``p``.  ``cumulative_probability``
+    # includes the target itself, so subtract its probability here.
+    return all(
+        float(row["cumulative_probability"]) - float(row["probability"]) <= p
+        for row in rows
+    )
 
 
 def word_survives_min_p(rows: list[dict], min_p: float) -> bool:

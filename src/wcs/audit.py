@@ -112,6 +112,17 @@ def encode_prefix(tokenizer: Any, prefix: str) -> list[int]:
     return list(token_ids)
 
 
+def sample_prefix_ids(tokenizer: Any, sample: dict[str, Any]) -> list[int]:
+    """Return an optional preformatted prompt path or encode the raw prefix."""
+    prepared = sample.get("_prefix_token_ids")
+    if prepared is not None:
+        token_ids = [int(token_id) for token_id in prepared]
+        if not token_ids:
+            raise ValueError("Prepared sample prefix contains no token ids")
+        return token_ids
+    return encode_prefix(tokenizer, sample["prefix"])
+
+
 def model_forward_no_cache(model: Any, input_ids: Any) -> Any:
     attempts = (
         {"use_cache": False, "logits_to_keep": 1},
@@ -215,7 +226,7 @@ def audit_sample(
 ) -> list[AuditTokenRow]:
     import torch
 
-    prefix_ids = encode_prefix(tokenizer, sample["prefix"])
+    prefix_ids = sample_prefix_ids(tokenizer, sample)
     word_ids = encode_target_word(tokenizer, sample["word"])
     current_ids = list(prefix_ids)
     rows: list[AuditTokenRow] = []
@@ -279,7 +290,7 @@ def audit_sample_temperatures(
     import torch
 
     temperature_values = [float(temperature) for temperature in temperatures]
-    prefix_ids = encode_prefix(tokenizer, sample["prefix"])
+    prefix_ids = sample_prefix_ids(tokenizer, sample)
     word_ids = encode_target_word(tokenizer, sample["word"])
     current_ids = list(prefix_ids)
     rows_by_temperature: dict[float, list[AuditTokenRow]] = {

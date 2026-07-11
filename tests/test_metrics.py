@@ -72,6 +72,35 @@ class MetricsTest(unittest.TestCase):
             write_summary_csv(summaries, summary_path)
             self.assertIn("decoder", summary_path.read_text(encoding="utf-8"))
 
+    def test_top_p_keeps_the_boundary_token(self) -> None:
+        """The token that crosses p is part of the standard nucleus."""
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            rows = [
+                # Mass above this token is 0.45 and including it is 0.55.
+                # It must survive top-p=0.50 as the boundary token.
+                audit_row(
+                    "boundary",
+                    0,
+                    rank=2,
+                    cumulative_probability=0.55,
+                    probability_ratio_to_top=0.2,
+                )
+            ]
+            rows[0]["probability"] = 0.10
+            rows[0]["word_token_count"] = 1
+            audit_path.write_text(json.dumps(rows[0]) + "\n", encoding="utf-8")
+
+            summaries = summarize_wcs(
+                [audit_path],
+                top_k_values=[],
+                top_p_values=[0.44, 0.50],
+                min_p_values=[],
+            )
+            keyed = {row.parameter: row for row in summaries}
+            self.assertEqual(keyed[0.44].covered_words, 0)
+            self.assertEqual(keyed[0.50].covered_words, 1)
+
     def test_summarize_wcs_by_target_word_counts_any_surviving_context(self) -> None:
         with TemporaryDirectory() as directory:
             audit_path = Path(directory) / "audit.jsonl"
