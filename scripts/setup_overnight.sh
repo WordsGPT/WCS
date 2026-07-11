@@ -29,8 +29,8 @@ fi
 "$VENV/bin/python" -m pip install --upgrade pip wheel
 "$VENV/bin/python" -m pip install --upgrade --requirement requirements-overnight.txt
 
-if ! "$VENV/bin/python" -c 'import torch; assert torch.cuda.is_available()' 2>/dev/null; then
-  echo "[setup] no working CUDA torch found; installing the cu128 wheel"
+if ! "$VENV/bin/python" -c 'import torch; assert torch.cuda.is_available() and int(torch.__version__.split(".")[0]) >= 2 and int(torch.__version__.split(".")[1]) >= 4' 2>/dev/null; then
+  echo "[setup] no working CUDA torch >= 2.4 found; installing the cu128 wheel"
   "$VENV/bin/python" -m pip install --upgrade torch --index-url https://download.pytorch.org/whl/cu128
 fi
 
