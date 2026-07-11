@@ -116,5 +116,20 @@ Outputs are resumable under `results/fineweb_200x50/downstream_validation/`:
 - `wcs_diversity_correlations.csv`: Pearson and Spearman correlations with
   two-sided permutation p-values.
 
+Create the paper-facing, multiplicity-corrected tables and figures with:
+
+```bash
+python scripts/analyze_downstream_validation.py \
+  --results-dir results/fineweb_200x50/downstream_validation \
+  --output-dir results/fineweb_200x50/downstream_validation/corrected_analysis
+```
+
+This designates the 24 aggregate Spearman relationships (six models × two
+temperatures × TTR/MTLD) as the primary testing family and applies Holm
+family-wise-error correction. Pearson results are a separately corrected
+sensitivity analysis. The 72 paired sampler-endpoint tests form a secondary
+Holm-corrected family; sampler-specific correlations with only three or four
+points are retained as descriptive results.
+
 FineWeb is web-crawl data and may contain residual toxic, biased, or personal
 content despite its filtering. Treat the generated JSONL as research data.
