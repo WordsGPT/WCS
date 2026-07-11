@@ -6,7 +6,7 @@ from scripts.run_downstream_validation import (
     Condition,
     average_ranks,
     permutation_correlation,
-    prompt_for_sample,
+    prepared_samples_for_generation,
 )
 from scripts.run_model_suite import ModelSpec
 
@@ -44,14 +44,15 @@ class DownstreamValidationTest(unittest.TestCase):
 
     def test_chat_template_accepts_mapping_input_ids(self) -> None:
         model = ModelSpec("fixture-it", "fixture/model", "fixture", "instruct")
-        prompt, token_ids, mode = prompt_for_sample(
+        samples, mode = prepared_samples_for_generation(
             MappingChatTokenizer(),
             model,
-            {"prefix": "A passage"},
+            [{"prefix": "A passage"}],
             requested_words=100,
         )
-        self.assertEqual(prompt, "<chat>prompt")
-        self.assertEqual(token_ids, [11, 12, 13])
+        self.assertEqual(len(samples), 1)
+        self.assertEqual(samples[0]["prefix"], "<chat>prompt")
+        self.assertEqual(samples[0]["_prefix_token_ids"], [11, 12, 13])
         self.assertEqual(mode, "chat_continuation_instruction")
 
 
