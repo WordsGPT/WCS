@@ -29,6 +29,16 @@ MODEL_LABELS = {
     "deepseek-qwen14b-distill": "DeepSeek R1 Distill Qwen 14B",
 }
 
+POST_TRAINED_MODEL_IDS = {
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "Qwen/Qwen2.5-14B-Instruct",
+    "Qwen/Qwen3.5-9B",
+    "google/gemma-3-12b-it",
+    "google/gemma-4-E4B-it",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+}
+
 ENDPOINTS = (
     ("top_k", 10.0, 80.0, "top-k 10→80"),
     ("top_p", 0.80, 0.99, "top-p .80→.99"),
@@ -81,6 +91,7 @@ def primary_correlations(correlation_csv: Path) -> list[dict]:
     )
     spearman_adjusted = holm_adjust([float(row["spearman_p"]) for row in selected])
     pearson_adjusted = holm_adjust([float(row["pearson_p"]) for row in selected])
+    family_size = len(selected)
     output = []
     for row, spearman_holm, pearson_holm in zip(
         selected, spearman_adjusted, pearson_adjusted
@@ -93,13 +104,13 @@ def primary_correlations(correlation_csv: Path) -> list[dict]:
                 "configurations": int(row["configurations"]),
                 "spearman_rho": float(row["spearman_rho"]),
                 "spearman_p_raw": float(row["spearman_p"]),
-                "spearman_p_holm_24": spearman_holm,
+                "spearman_p_holm": spearman_holm,
                 "spearman_significant_holm_05": spearman_holm < 0.05,
                 "pearson_r": float(row["pearson_r"]),
                 "pearson_p_raw": float(row["pearson_p"]),
-                "pearson_p_holm_24": pearson_holm,
+                "pearson_p_holm": pearson_holm,
                 "pearson_significant_holm_05": pearson_holm < 0.05,
-                "family_definition": "24 model×temperature×metric primary tests",
+                "family_definition": f"{family_size} model×temperature×metric primary tests",
             }
         )
     return output
@@ -200,10 +211,11 @@ def paired_endpoint_effects(generations: dict[str, list[dict]]) -> list[dict]:
                         }
                     )
     adjusted = holm_adjust([float(row["wilcoxon_p_raw"]) for row in output])
+    family_size = len(output)
     for row, adjusted_p in zip(output, adjusted):
-        row["wilcoxon_p_holm_72"] = adjusted_p
+        row["wilcoxon_p_holm"] = adjusted_p
         row["significant_holm_05"] = adjusted_p < 0.05
-        row["family_definition"] = "72 secondary endpoint tests"
+        row["family_definition"] = f"{family_size} secondary endpoint tests"
     return output
 
 
@@ -352,19 +364,23 @@ def write_report(
     completion: list[dict],
 ) -> None:
     primary_significant = [row for row in primary if row["spearman_significant_holm_05"]]
-    base = [row for row in primary if "Instruct" not in row["model"] and not row["model"].endswith("-it")]
+    base = [row for row in primary if row["model"] not in POST_TRAINED_MODEL_IDS]
     base_significant = [row for row in base if row["spearman_significant_holm_05"]]
     instruct_t1 = [
         row
         for row in primary
         if float(row["temperature"]) == 1.0
-        and ("Instruct" in row["model"] or row["model"].endswith("-it"))
+        and row["model"] in POST_TRAINED_MODEL_IDS
     ]
     instruct_t1_significant = [
         row for row in instruct_t1 if row["spearman_significant_holm_05"]
     ]
     paired_significant = [row for row in paired if row["significant_holm_05"]]
     minimum_completion = min(completion, key=lambda row: row["min_completion_rate"])
+    primary_count = len(primary)
+    paired_count = len(paired)
+    model_count = len({row["model"] for row in primary})
+    temperature_count = len({row["temperature"] for row in primary})
 
     lines = [
         "# Corrected downstream-validation findings",
@@ -372,13 +388,13 @@ def write_report(
         "## Primary analysis and multiplicity correction",
         "",
         (
-            "We designate the 24 aggregate Spearman tests as the primary family: six models × "
-            "two temperatures × two mean diversity metrics. Holm correction controls "
-            "the family-wise error rate across these 24 tests. Pearson correlations are "
+            f"We designate the {primary_count} aggregate Spearman tests as the primary family: "
+            f"{model_count} models × {temperature_count} temperatures × two mean diversity metrics. "
+            f"Holm correction controls the family-wise error rate across these {primary_count} tests. Pearson correlations are "
             "reported as a separately corrected sensitivity analysis."
         ),
         "",
-        f"- {len(primary_significant)}/24 primary Spearman relationships remain significant after Holm correction.",
+        f"- {len(primary_significant)}/{primary_count} primary Spearman relationships remain significant after Holm correction.",
         f"- {len(base_significant)}/{len(base)} Base-model relationships remain significant.",
         (
             f"- {len(instruct_t1_significant)}/{len(instruct_t1)} temperature-1.0 "
@@ -389,11 +405,11 @@ def write_report(
         "",
         (
             "Endpoint contrasts compare the same contexts under restrictive and permissive "
-            "settings using paired Wilcoxon tests. Holm correction is applied across all 72 "
+            f"settings using paired Wilcoxon tests. Holm correction is applied across all {paired_count} "
             "model × temperature × sampler × metric tests."
         ),
         "",
-        f"- {len(paired_significant)}/72 endpoint effects remain significant after correction.",
+        f"- {len(paired_significant)}/{paired_count} endpoint effects remain significant after correction.",
         "",
         "## Completion and interpretation",
         "",
@@ -426,7 +442,7 @@ def write_report(
         lines.append(
             f"| {model} | {row['temperature']:g} | {metric} | "
             f"{row['spearman_rho']:.2f} | {format_p(row['spearman_p_raw'])} | "
-            f"{format_p(row['spearman_p_holm_24'])} |"
+            f"{format_p(row['spearman_p_holm'])} |"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

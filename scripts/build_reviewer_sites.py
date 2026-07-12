@@ -25,6 +25,16 @@ MODEL_META = {
         "mistral7b-v03-instruct",
         "Mistral 7B Instruct",
     ),
+    "Qwen/Qwen2.5-14B": ("qwen25-14b-base", "Qwen 2.5 14B Base"),
+    "Qwen/Qwen2.5-14B-Instruct": ("qwen25-14b-instruct", "Qwen 2.5 14B Instruct"),
+    "Qwen/Qwen3.5-9B-Base": ("qwen35-9b-base", "Qwen 3.5 9B Base"),
+    "Qwen/Qwen3.5-9B": ("qwen35-9b-instruct", "Qwen 3.5 9B Instruct"),
+    "google/gemma-4-E4B": ("gemma4-e4b-base", "Gemma 4 E4B Base"),
+    "google/gemma-4-E4B-it": ("gemma4-e4b-it", "Gemma 4 E4B Instruct"),
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": (
+        "deepseek-qwen14b-distill",
+        "DeepSeek R1 Distill Qwen 14B",
+    ),
 }
 
 TOP_K = tuple(range(1, 21)) + tuple(range(25, 81, 5))
@@ -182,8 +192,8 @@ def build_wcs_assets(
         "sample_design": "200 target words × 50 contexts",
         "temperature": 1.0,
         "models": [
-            {"model": model, "slug": slug, "label": label}
-            for model, (slug, label) in MODEL_META.items()
+            {"model": model, "slug": MODEL_META[model][0], "label": MODEL_META[model][1]}
+            for model in sorted({row["model"] for row in overall_rows})
         ],
         "ci_method": f"target-word cluster bootstrap, {bootstrap_draws} draws, percentile 95% interval",
         "top_p_definition": "boundary token retained; survives when mass strictly above target is at most p",
@@ -239,12 +249,14 @@ def build_downstream_asset(results_dir: Path, corrected_dir: Path, output_dir: P
         )
     value = {
         "metadata": {
+            "models": len({row["model"] for row in diversity}),
+            "generations": sum(int(row["contexts"]) for row in diversity),
             "contexts": 50,
             "scoring_window": "first 100 lexical words",
             "temperatures": [0.7, 1.0],
-            "prompting": "raw continuation for Base; native chat template plus continuation instruction for Instruct",
-            "primary_family": "24 aggregate Spearman tests; Holm FWER correction",
-            "secondary_family": "72 paired endpoint Wilcoxon tests; Holm FWER correction",
+            "prompting": "WCS uses raw FineWeb prefixes for all checkpoints; generation uses raw continuation for Base and native chat continuation instructions for post-trained checkpoints",
+            "primary_family": f"{len(primary)} aggregate Spearman tests; Holm FWER correction",
+            "secondary_family": f"{len(paired)} paired endpoint Wilcoxon tests; Holm FWER correction",
         },
         "rows": joined,
         "primary_correlations": primary,
