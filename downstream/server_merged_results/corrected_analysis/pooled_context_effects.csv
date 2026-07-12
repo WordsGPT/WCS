@@ -1,3 +1,0 @@
-metric,effect_reachable_minus_unreachable,cluster_robust_se,ci95_low,ci95_high,z_value,p_value,observations,contexts,configurations,reachable_observations,unreachable_observations,fixed_effects,uncertainty
-ttr,0.008874225944902902,0.003051848532305093,0.00289260282158492,0.014855849068220885,2.9078199166719805,0.0036395785952463866,13593,50,286,7963,5630,context and model×temperature×decoder×parameter,sandwich standard errors clustered by context
-mtld,3.4654322934221784,1.6277932122647356,0.2749575973832967,6.6559069894610605,2.1289143284979977,0.033261349085242795,13593,50,286,7963,5630,context and model×temperature×decoder×parameter,sandwich standard errors clustered by context

@@ -205,11 +205,8 @@ def build_wcs_assets(
 def build_downstream_asset(results_dir: Path, corrected_dir: Path, output_dir: Path) -> None:
     diversity = read_csv(results_dir / "lexical_diversity_by_config.csv")
     wcs = read_csv(results_dir / "conditioned_wcs" / "wcs_summary.csv")
-    primary = read_csv(corrected_dir / "primary_correlations_holm.csv")
-    paired = read_csv(corrected_dir / "paired_endpoint_effects_holm.csv")
     completion = read_csv(corrected_dir / "completion_rates.csv")
-    descriptive = read_csv(corrected_dir / "sampler_correlations_descriptive.csv")
-    pooled_path = corrected_dir / "pooled_context_effects.csv"
+    pooled_path = corrected_dir / "pooled_config_correlations.csv"
     pooled = read_csv(pooled_path) if pooled_path.exists() else []
     wcs_index = {
         (
@@ -257,15 +254,11 @@ def build_downstream_asset(results_dir: Path, corrected_dir: Path, output_dir: P
             "scoring_window": "first 100 lexical words",
             "temperatures": [0.7, 1.0],
             "prompting": "WCS uses raw FineWeb prefixes for all checkpoints; generation uses raw continuation for Base and native chat continuation instructions for post-trained checkpoints",
-            "primary_family": f"{len(primary)} aggregate Spearman tests; Holm FWER correction",
-            "secondary_family": f"{len(paired)} paired endpoint Wilcoxon tests; Holm FWER correction",
+            "primary_analysis": "repeated-measures Spearman correlation with model-cluster bootstrap intervals",
         },
         "rows": joined,
-        "primary_correlations": primary,
-        "paired_effects": paired,
         "completion": completion,
-        "sampler_correlations": descriptive,
-        "pooled_context_effects": pooled,
+        "pooled_config_correlations": pooled,
     }
     write_json(output_dir / "downstream.json", value)
 
