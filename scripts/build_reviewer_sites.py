@@ -209,6 +209,8 @@ def build_downstream_asset(results_dir: Path, corrected_dir: Path, output_dir: P
     paired = read_csv(corrected_dir / "paired_endpoint_effects_holm.csv")
     completion = read_csv(corrected_dir / "completion_rates.csv")
     descriptive = read_csv(corrected_dir / "sampler_correlations_descriptive.csv")
+    pooled_path = corrected_dir / "pooled_context_effects.csv"
+    pooled = read_csv(pooled_path) if pooled_path.exists() else []
     wcs_index = {
         (
             row["model"],
@@ -263,6 +265,7 @@ def build_downstream_asset(results_dir: Path, corrected_dir: Path, output_dir: P
         "paired_effects": paired,
         "completion": completion,
         "sampler_correlations": descriptive,
+        "pooled_context_effects": pooled,
     }
     write_json(output_dir / "downstream.json", value)
 
