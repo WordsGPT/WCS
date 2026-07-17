@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WCS Model Suite</title>
+  <title>FineWeb WCS Model Suite</title>
   <style>
     :root {
       color-scheme: light;
@@ -22,13 +22,22 @@
       color: var(--ink);
     }
     header {
-      padding: 24px 28px 16px;
+      padding: 24px 28px 20px;
       border-bottom: 1px solid var(--line);
       background: var(--panel);
       display: flex;
       justify-content: space-between;
       gap: 16px;
-      align-items: end;
+      align-items: center;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+    }
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
     }
     h1 {
       margin: 0 0 6px;
@@ -40,6 +49,7 @@
       margin: 0;
       color: var(--muted);
       font-size: 14px;
+      line-height: 1.5;
     }
     a {
       color: var(--accent);
@@ -47,16 +57,28 @@
       font-size: 14px;
       font-weight: 650;
     }
+    a:hover { text-decoration: underline; }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px 16px;
+      max-width: 620px;
+    }
+    nav a {
+      white-space: nowrap;
+    }
     main {
       padding: 20px 28px 32px;
       display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
+      grid-template-columns: 300px minmax(0, 1fr);
       gap: 20px;
     }
     aside, section {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.04);
     }
     aside {
       padding: 16px;
@@ -225,6 +247,7 @@
       color: var(--muted);
       font-size: 13px;
       text-align: right;
+      line-height: 1.45;
     }
     .chart-wrap {
       position: relative;
@@ -292,7 +315,7 @@
       font-size: 12px;
       line-height: 1.45;
       pointer-events: none;
-      transform: translate(12px, -50%);
+      transform: translateY(-50%);
       display: none;
       z-index: 5;
       box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
@@ -347,6 +370,19 @@
       border-radius: 8px;
       margin-top: 12px;
     }
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      padding: 32px;
+      background: rgba(255, 255, 255, 0.88);
+      border-radius: 10px;
+    }
+    .empty-state[hidden] { display: none; }
     .loader input {
       margin-top: 10px;
       max-width: 100%;
@@ -374,9 +410,9 @@
       header {
         display: block;
       }
-      header a {
-        display: inline-block;
-        margin-top: 10px;
+      nav {
+        justify-content: flex-start;
+        margin-top: 14px;
       }
     }
   </style>
@@ -384,13 +420,17 @@
 <body>
   <header>
     <div>
-      <h1>Word Coverage Score Model Suite</h1>
-      <p class="subhead">Interactive views from <code>useforgraphs.csv</code>. Model colors are fixed across all decoder graphs.</p>
+      <p class="eyebrow">FineWeb · sample-10BT · forced-path audit</p>
+      <h1>FineWeb Word Coverage Score</h1>
+      <p class="subhead">Thirteen models on 200 target words × 50 FineWeb contexts at T=1.0. Parameter sweeps extend through top-k 80.</p>
     </div>
-    <a href="temperature.html">Temperature comparison</a>
-    <a href="mobydick.html">Dataset comparison</a>
-    <a href="lyrics.html">Lyrics comparison</a>
-    <a href="language.html">Language comparison</a>
+    <nav aria-label="Related WCS views">
+      <a href="word_list.html">Target words</a>
+      <a href="temperature.html">Temperature comparison</a>
+      <a href="mobydick.html">Dataset comparison</a>
+      <a href="lyrics.html">Lyrics comparison</a>
+      <a href="language.html">Language comparison</a>
+    </nav>
   </header>
   <main>
     <aside>
@@ -430,9 +470,10 @@
       <div class="model-list" id="modelList"></div>
 
       <div class="default-list">
-        <div><strong>Qwen2.5-14B-Instruct</strong>: top-p 0.8, top-k 20, T 0.7</div>
-        <div><strong>Llama-3.1-8B-Instruct</strong>: top-p 0.9, T 0.6</div>
-        <div><strong>DeepSeek-R1-Distill-Qwen-14B</strong>: top-p 0.95, T 0.6</div>
+        <div><strong>Parameter reference markers</strong>: all plotted FineWeb curves remain evaluated at T=1.0.</div>
+        <div><strong>Qwen2.5-14B-Instruct</strong>: top-p 0.8, top-k 20</div>
+        <div><strong>Llama-3.1-8B-Instruct</strong>: top-p 0.9</div>
+        <div><strong>DeepSeek-R1-Distill-Qwen-14B</strong>: top-p 0.95</div>
         <div><strong>Mistral-7B-Instruct-v0.3</strong>: top-p 0.9, standard vLLM/Transformers-style default when not overridden</div>
       </div>
     </aside>
@@ -448,9 +489,10 @@
       <div class="chart-wrap">
         <svg id="chart" role="img" aria-label="WCS line chart"></svg>
         <div class="tooltip" id="tooltip"></div>
+        <div class="empty-state" id="emptyState" hidden>Select at least one model to draw the parameter sweep.</div>
       </div>
       <div class="loader" id="loader" hidden>
-        Could not load <code>useforgraphs.csv</code> automatically. If you opened this page directly from disk, choose the CSV file here.
+        Could not load <code>fineweb_wcs_word_summary.csv</code> automatically. If you opened this page directly from disk, choose the CSV file here.
         <br>
         <input type="file" id="fileInput" accept=".csv,text/csv">
       </div>
@@ -522,25 +564,25 @@
         model: "Qwen/Qwen2.5-14B-Instruct",
         decoder: "top_p",
         parameter: 0.8,
-        label: "Qwen2.5-14B-Instruct default: top-p 0.8, T 0.7"
+        label: "Qwen2.5-14B-Instruct parameter default: top-p 0.8 (FineWeb curve at T=1.0)"
       },
       {
         model: "Qwen/Qwen2.5-14B-Instruct",
         decoder: "top_k",
         parameter: 20,
-        label: "Qwen2.5-14B-Instruct default: top-k 20, T 0.7"
+        label: "Qwen2.5-14B-Instruct parameter default: top-k 20 (FineWeb curve at T=1.0)"
       },
       {
         model: "meta-llama/Llama-3.1-8B-Instruct",
         decoder: "top_p",
         parameter: 0.9,
-        label: "Llama-3.1-8B-Instruct default: top-p 0.9, T 0.6"
+        label: "Llama-3.1-8B-Instruct parameter default: top-p 0.9 (FineWeb curve at T=1.0)"
       },
       {
         model: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
         decoder: "top_p",
         parameter: 0.95,
-        label: "DeepSeek official recommendation: top-p 0.95, T 0.6"
+        label: "DeepSeek parameter recommendation: top-p 0.95 (FineWeb curve at T=1.0)"
       },
       {
         model: "mistralai/Mistral-7B-Instruct-v0.3",
@@ -606,7 +648,7 @@
 
     async function loadData() {
       try {
-        const response = await fetch("useforgraphs.csv", { cache: "no-store" });
+        const response = await fetch("fineweb_wcs_word_summary.csv", { cache: "no-store" });
         if (!response.ok) throw new Error("CSV fetch failed");
         initialize(parseCsv(await response.text()));
       } catch (error) {
@@ -775,6 +817,16 @@
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
       const rows = state.rows.filter(row => row.decoder === state.decoder && state.enabled.has(row.model));
+      const emptyState = document.getElementById("emptyState");
+      if (!rows.length) {
+        emptyState.hidden = false;
+        document.getElementById("chartTitle").textContent = `${decoderLabels[state.decoder]} ${metricLabels[state.metric]}`;
+        document.getElementById("chartMeta").textContent = "0 visible models";
+        document.getElementById("chartNotes").innerHTML = notesForCurrentChart();
+        hideTooltip();
+        return;
+      }
+      emptyState.hidden = true;
       const byModel = new Map();
       rows.forEach(row => {
         if (!byModel.has(row.model)) byModel.set(row.model, []);
@@ -791,11 +843,11 @@
       const y = value => margin.top + (1 - (value - yMin) / (yMax - yMin)) * innerHeight;
 
       drawGrid(svg, width, height, margin, innerWidth, innerHeight, x, y, xMin, xMax);
-      drawDefaults(svg, byModel, x, y, rows);
+      drawDefaults(svg, byModel, x, y, margin, height);
       drawSeries(svg, byModel, x, y);
 
       document.getElementById("chartTitle").textContent = `${decoderLabels[state.decoder]} ${metricLabels[state.metric]}`;
-      document.getElementById("chartMeta").textContent = `${byModel.size} visible models`;
+      document.getElementById("chartMeta").innerHTML = `<strong>${byModel.size}</strong> visible models<br>${rows.length} plotted settings`;
       document.getElementById("chartNotes").innerHTML = notesForCurrentChart();
     }
 
@@ -819,7 +871,7 @@
     }
 
     function ticksForDecoder(decoder, min, max) {
-      if (decoder === "top_k") return [1, 5, 10, 15, 20].filter(value => value >= min && value <= max);
+      if (decoder === "top_k") return [1, 5, 10, 20, 30, 40, 50, 60, 70, 80].filter(value => value >= min && value <= max);
       if (decoder === "top_p") return [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99].filter(value => value >= min && value <= max);
       return [0.01, 0.03, 0.05, 0.07, 0.1].filter(value => value >= min && value <= max);
     }
@@ -842,6 +894,9 @@
           circle.setAttribute("fill", colors[model] || "#64748b");
           circle.addEventListener("mousemove", event => showTooltip(event, row));
           circle.addEventListener("mouseleave", hideTooltip);
+          const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+          title.textContent = `${displayNames[row.model] || row.model}: ${(row[state.metric] * 100).toFixed(1)}% at ${decoderLabels[row.decoder]} ${formatParameter(row.parameter)}`;
+          circle.append(title);
           svg.append(circle);
         });
       });
@@ -851,7 +906,7 @@
       return (modelMeta[model]?.variant || "base") === "base" ? "base" : "instruct";
     }
 
-    function drawDefaults(svg, byModel, x, y, rows) {
+    function drawDefaults(svg, byModel, x, y, margin, height) {
       const markers = defaultMarkers.filter(marker => marker.decoder === state.decoder && state.enabled.has(marker.model));
       const drawnLines = new Set();
       markers.forEach(marker => {
@@ -861,7 +916,7 @@
         if (!row) return;
         const xPos = x(marker.parameter);
         if (!drawnLines.has(marker.parameter)) {
-          line(svg, xPos, 34, xPos, 502, "default-line");
+          line(svg, xPos, margin.top, xPos, height - margin.bottom, "default-line");
           drawnLines.add(marker.parameter);
         }
         const yPos = y(row[state.metric]);
@@ -908,9 +963,17 @@
         ${extra ? `<br><br>${extra}` : ""}
       `;
       const wrap = document.querySelector(".chart-wrap").getBoundingClientRect();
-      tooltip.style.left = `${event.clientX - wrap.left}px`;
-      tooltip.style.top = `${event.clientY - wrap.top}px`;
       tooltip.style.display = "block";
+      const left = Math.min(
+        Math.max(event.clientX - wrap.left + 12, 8),
+        Math.max(8, wrap.width - tooltip.offsetWidth - 8)
+      );
+      const top = Math.min(
+        Math.max(event.clientY - wrap.top, tooltip.offsetHeight / 2 + 8),
+        wrap.height - tooltip.offsetHeight / 2 - 8
+      );
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     }
 
     function hideTooltip() {

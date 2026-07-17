@@ -3,38 +3,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WCS Target Words</title>
+  <title>FineWeb WCS Target Words</title>
   <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #5e6b7c;
+      --line: #dce2ea;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+    }
+    * { box-sizing: border-box; }
     body {
-      margin: 32px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #1f2933;
-      background: #f7f8fa;
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
     }
     main {
-      max-width: 1080px;
+      max-width: 1160px;
       margin: 0 auto;
+      padding: 28px 28px 48px;
+    }
+    .site-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 8px;
+    }
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
     }
     h1 {
-      margin: 0 0 4px;
-      font-size: 28px;
-      font-weight: 700;
+      margin: 0 0 6px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.08;
+      letter-spacing: -0.025em;
     }
     p {
       margin: 0 0 20px;
-      color: #52606d;
+      color: var(--muted);
+      line-height: 1.55;
     }
+    .lede { max-width: 760px; margin-bottom: 0; }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px 16px;
+      padding-bottom: 4px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    a:hover { text-decoration: underline; }
     .summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
-      margin: 22px 0;
+      margin: 24px 0;
     }
     .stat {
-      background: white;
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
-      padding: 14px 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 7px 24px rgba(15, 23, 42, 0.035);
     }
     .stat strong {
       display: block;
@@ -48,11 +93,12 @@
       letter-spacing: 0.04em;
     }
     .chart-panel {
-      background: white;
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
       margin: 0 0 24px;
       padding: 18px 18px 10px;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.04);
     }
     .chart-heading {
       display: flex;
@@ -178,15 +224,84 @@
     }
     .chart-fallback {
       padding: 16px;
-      background: white;
-      border: 1px solid #d9e2ec;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .table-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.04);
+    }
+    .table-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 220px auto;
+      gap: 10px;
+      align-items: center;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+    .search-wrap {
+      position: relative;
+    }
+    .search-wrap span {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7b8797;
+      pointer-events: none;
+    }
+    input, select, button {
+      font: inherit;
+    }
+    input, select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #cfd7e3;
       border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 11px;
+    }
+    input {
+      padding-left: 36px;
+    }
+    input:focus, select:focus {
+      outline: 3px solid rgba(37, 99, 235, 0.15);
+      border-color: var(--accent);
+    }
+    button {
+      min-height: 40px;
+      border: 1px solid #cfd7e3;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: #f4f7fb; }
+    .table-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+    .table-wrap {
+      max-height: 680px;
+      overflow: auto;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
-      border: 1px solid #d9e2ec;
+      background: var(--panel);
     }
     th, td {
       padding: 10px 12px;
@@ -197,7 +312,8 @@
     th {
       position: sticky;
       top: 0;
-      background: #eef2f6;
+      z-index: 1;
+      background: #f1f4f8;
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
@@ -213,10 +329,18 @@
     tr:last-child td {
       border-bottom: 0;
     }
+    tbody tr:nth-child(even) { background: #fbfcfe; }
+    tbody tr:hover { background: var(--accent-soft); }
+    .no-results {
+      padding: 26px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .no-results[hidden] { display: none; }
     @media (max-width: 760px) {
-      body {
-        margin: 18px;
-      }
+      main { padding: 20px 14px 36px; }
+      .site-head { display: block; }
+      nav { justify-content: flex-start; margin-top: 14px; }
       .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -227,18 +351,30 @@
         justify-content: flex-start;
         margin-top: 12px;
       }
+      .table-toolbar { grid-template-columns: 1fr; }
+      .table-wrap { max-height: 72vh; }
+      th, td { padding: 9px 10px; }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>WCS Target Words</h1>
-    <p>100 unique words from samples.jsonl, sampled from the middle-long-tail band of data/raw/norvig_count_1w.txt.</p>
+    <header class="site-head">
+      <div>
+        <p class="eyebrow">FineWeb · sample-10BT · target inventory</p>
+        <h1>FineWeb WCS Target Words</h1>
+        <p class="lede">200 unique words from HuggingFaceFW/fineweb (sample-10BT), sampled from the middle-long-tail band of data/raw/norvig_count_1w.txt.</p>
+      </div>
+      <nav aria-label="Related WCS views">
+        <a href="index.html">Decoder curves</a>
+        <a href="temperature.html">Temperature comparison</a>
+      </nav>
+    </header>
     <section class="summary" aria-label="Selection summary">
-      <div class="stat"><strong>100</strong><span>target words</span></div>
+      <div class="stat"><strong>200</strong><span>target words</span></div>
       <div class="stat"><strong>10,000-40,000</strong><span>selection band</span></div>
-      <div class="stat"><strong>10,104-39,823</strong><span>observed target ranks</span></div>
-      <div class="stat"><strong>1,000</strong><span>contexts</span></div>
+      <div class="stat"><strong>10,019-39,746</strong><span>observed target ranks</span></div>
+      <div class="stat"><strong>10,000</strong><span>contexts</span></div>
     </section>
 
     <section class="chart-panel" aria-labelledby="freqChartTitle">
@@ -262,8 +398,8 @@
         <g class="grid"><line x1="170.06" y1="152" x2="170.06" y2="498" /><line x1="267.61" y1="152" x2="267.61" y2="498" /><line x1="444.86" y1="152" x2="444.86" y2="498" /><line x1="570.63" y1="152" x2="570.63" y2="498" /><line x1="747.88" y1="152" x2="747.88" y2="498" /><line x1="873.64" y1="152" x2="873.64" y2="498" /><line x1="124" y1="463.58" x2="946" y2="463.58" /><line x1="124" y1="418.36" x2="946" y2="418.36" /><line x1="124" y1="386.27" x2="946" y2="386.27" /><line x1="124" y1="308.96" x2="946" y2="308.96" /><line x1="124" y1="263.73" x2="946" y2="263.73" /><line x1="124" y1="206.76" x2="946" y2="206.76" /></g>
         <rect class="band" x="267.61" y="152" width="606.03" height="346" />
         <path class="curve" d="M 124.00 152.00 L 126.72 153.03 L 129.43 154.01 L 132.12 155.04 L 134.79 155.98 L 137.45 156.88 L 140.09 157.98 L 142.72 159.11 L 145.33 159.96 L 147.92 160.96 L 150.50 161.70 L 153.07 162.67 L 155.62 163.60 L 158.15 164.56 L 160.67 165.32 L 163.17 166.30 L 165.67 167.26 L 168.14 168.15 L 170.61 169.10 L 173.05 170.14 L 175.49 170.96 L 177.91 171.77 L 180.32 172.76 L 182.72 173.60 L 185.10 174.55 L 187.47 175.30 L 189.82 176.26 L 192.17 176.95 L 194.50 177.73 L 196.82 178.42 L 199.13 179.29 L 201.42 180.05 L 203.70 180.78 L 205.97 181.75 L 208.23 182.91 L 210.48 183.91 L 212.72 184.82 L 214.94 185.62 L 217.16 186.33 L 219.36 187.09 L 221.55 187.74 L 223.73 188.52 L 225.90 189.42 L 228.06 190.11 L 230.21 190.91 L 232.34 191.88 L 234.47 192.56 L 236.59 193.32 L 238.70 194.11 L 240.79 194.92 L 242.88 195.69 L 244.96 196.58 L 247.02 197.48 L 249.08 198.31 L 251.13 199.13 L 253.17 200.04 L 255.19 200.95 L 257.21 201.78 L 259.22 202.47 L 261.22 203.15 L 263.22 203.92 L 265.20 204.52 L 267.17 205.34 L 269.14 206.11 L 271.09 206.88 L 273.04 207.61 L 274.98 208.68 L 276.91 209.30 L 278.83 210.07 L 280.74 210.85 L 282.65 211.85 L 284.54 212.56 L 286.43 213.07 L 288.31 213.83 L 290.19 214.85 L 292.05 215.44 L 293.91 216.04 L 295.75 216.73 L 297.60 217.32 L 299.43 218.14 L 301.25 218.85 L 303.07 219.58 L 304.88 220.33 L 306.68 221.12 L 308.48 221.89 L 310.27 222.54 L 312.05 223.34 L 313.82 224.16 L 315.59 224.90 L 317.35 225.43 L 319.10 225.99 L 320.84 226.79 L 322.58 227.56 L 324.31 228.35 L 326.04 229.15 L 327.76 229.87 L 329.47 230.60 L 331.17 231.13 L 332.87 231.97 L 334.56 232.67 L 336.25 233.52 L 337.92 234.24 L 339.60 234.93 L 341.26 235.77 L 342.92 236.37 L 344.57 237.01 L 346.22 237.75 L 347.86 238.49 L 349.49 239.08 L 351.12 239.65 L 352.74 240.45 L 354.36 241.11 L 355.97 241.75 L 357.57 242.29 L 359.17 242.85 L 360.77 243.61 L 362.35 244.40 L 363.93 244.99 L 365.51 245.60 L 367.08 246.36 L 368.64 246.91 L 370.20 247.57 L 371.75 248.17 L 373.30 248.61 L 374.84 249.27 L 376.38 249.88 L 377.91 250.64 L 379.44 251.18 L 380.96 251.64 L 382.47 252.42 L 383.98 253.08 L 385.49 253.53 L 386.99 254.10 L 388.48 254.70 L 389.97 255.33 L 391.46 255.89 L 392.94 256.48 L 394.41 257.10 L 395.88 257.83 L 397.34 258.42 L 398.80 258.94 L 400.26 259.50 L 401.71 260.22 L 403.15 260.80 L 404.59 261.49 L 406.03 262.31 L 407.46 262.94 L 408.89 263.53 L 410.31 264.28 L 411.73 264.82 L 413.14 265.48 L 414.55 266.13 L 415.95 266.70 L 417.35 267.33 L 418.74 267.86 L 420.13 268.45 L 421.52 269.13 L 422.90 269.86 L 424.28 270.56 L 425.65 271.08 L 427.02 271.66 L 428.38 272.34 L 429.74 272.91 L 431.10 273.59 L 432.45 274.08 L 433.79 274.61 L 435.14 275.21 L 436.48 275.99 L 437.81 276.43 L 439.14 276.95 L 440.47 277.49 L 441.79 278.00 L 443.11 278.54 L 444.43 279.19 L 445.74 280.00 L 447.04 280.55 L 448.35 280.99 L 449.65 281.58 L 450.94 282.24 L 452.23 282.70 L 453.52 283.17 L 454.80 283.92 L 456.08 284.44 L 457.36 284.93 L 458.63 285.55 L 459.90 286.12 L 461.17 286.85 L 462.43 287.41 L 463.69 287.96 L 464.94 288.56 L 466.19 289.00 L 467.44 289.45 L 468.68 289.93 L 469.92 290.46 L 471.16 290.98 L 472.39 291.60 L 473.62 292.10 L 474.85 292.62 L 476.07 293.20 L 477.29 293.62 L 478.51 294.24 L 479.72 294.70 L 480.93 295.09 L 482.14 295.60 L 483.34 296.09 L 484.54 296.64 L 485.73 297.06 L 486.93 297.60 L 488.12 298.08 L 489.30 298.52 L 490.49 299.11 L 491.66 299.51 L 492.84 300.03 L 494.02 300.44 L 495.19 301.10 L 496.35 301.58 L 497.52 302.04 L 498.68 302.54 L 499.84 303.20 L 500.99 303.72 L 502.14 304.18 L 503.29 304.68 L 504.44 305.18 L 505.58 305.74 L 506.72 306.27 L 507.86 306.67 L 508.99 307.20 L 510.12 307.83 L 511.25 308.25 L 512.38 308.77 L 513.50 309.25 L 514.62 309.73 L 515.73 310.18 L 516.85 310.63 L 517.96 311.07 L 519.07 311.51 L 520.17 312.01 L 521.28 312.42 L 522.38 312.96 L 523.47 313.34 L 524.57 313.85 L 525.66 314.28 L 526.75 314.73 L 527.83 315.21 L 528.92 315.56 L 530.00 316.05 L 531.08 316.46 L 532.15 317.00 L 533.22 317.40 L 534.29 317.74 L 535.36 318.16 L 536.43 318.60 L 537.49 319.19 L 538.55 319.64 L 539.61 320.04 L 540.66 320.51 L 541.71 320.95 L 542.76 321.42 L 543.81 322.02 L 544.85 322.59 L 545.90 322.92 L 546.94 323.41 L 547.97 323.87 L 549.01 324.24 L 550.04 324.69 L 551.07 325.15 L 552.10 325.65 L 553.12 325.94 L 554.14 326.30 L 555.16 326.67 L 556.18 327.17 L 557.20 327.56 L 558.21 328.06 L 559.22 328.49 L 560.23 328.87 L 561.24 329.41 L 562.24 329.92 L 563.24 330.32 L 564.24 330.71 L 565.24 331.07 L 566.23 331.60 L 567.23 332.13 L 568.22 332.55 L 569.20 332.97 L 570.19 333.43 L 571.17 333.86 L 572.15 334.29 L 573.13 334.74 L 574.11 335.13 L 575.08 335.60 L 576.06 336.07 L 577.03 336.54 L 578.00 336.96 L 578.96 337.29 L 579.93 337.74 L 580.89 338.21 L 581.85 338.69 L 582.80 339.15 L 583.76 339.46 L 584.71 339.91 L 585.67 340.32 L 586.61 340.87 L 587.56 341.26 L 588.51 341.62 L 589.45 342.02 L 590.39 342.42 L 591.33 342.87 L 592.27 343.41 L 593.20 343.79 L 594.14 344.13 L 595.07 344.56 L 596.00 344.89 L 596.92 345.37 L 597.85 345.79 L 598.77 346.24 L 599.69 346.68 L 600.61 347.04 L 601.53 347.45 L 602.45 347.81 L 603.36 348.19 L 604.27 348.73 L 605.18 349.08 L 606.09 349.43 L 606.99 349.87 L 607.90 350.32 L 608.80 350.67 L 609.70 351.06 L 610.60 351.51 L 611.50 351.98 L 612.39 352.35 L 613.28 352.68 L 614.18 353.12 L 615.07 353.47 L 615.95 353.84 L 616.84 354.21 L 617.72 354.52 L 618.61 355.06 L 619.49 355.41 L 620.36 355.79 L 621.24 356.19 L 622.12 356.61 L 622.99 357.00 L 623.86 357.32 L 624.73 357.72 L 625.60 358.02 L 626.47 358.40 L 627.33 358.74 L 628.19 359.07 L 629.06 359.41 L 629.92 359.82 L 630.77 360.12 L 631.63 360.57 L 632.48 360.95 L 633.34 361.32 L 634.19 361.71 L 635.04 362.12 L 635.89 362.49 L 636.73 362.80 L 637.58 363.16 L 638.42 363.48 L 639.26 363.81 L 640.10 364.14 L 640.94 364.47 L 641.78 364.92 L 642.61 365.35 L 643.45 365.69 L 644.28 366.02 L 645.11 366.42 L 645.94 366.77 L 646.76 367.17 L 647.59 367.49 L 648.41 367.83 L 649.24 368.21 L 650.06 368.63 L 650.88 368.99 L 651.69 369.36 L 652.51 369.70 L 653.33 370.02 L 654.14 370.42 L 654.95 370.72 L 655.76 371.18 L 656.57 371.56 L 657.38 371.94 L 658.18 372.25 L 658.99 372.62 L 659.79 372.92 L 660.59 373.19 L 661.39 373.61 L 662.19 373.90 L 662.99 374.26 L 663.78 374.60 L 664.58 375.06 L 665.37 375.37 L 666.16 375.72 L 666.95 376.04 L 667.74 376.37 L 668.53 376.72 L 669.31 377.09 L 670.10 377.48 L 670.88 377.76 L 671.66 378.06 L 672.44 378.39 L 673.22 378.69 L 674.00 378.97 L 674.77 379.29 L 675.55 379.64 L 676.32 379.92 L 677.09 380.32 L 677.86 380.70 L 678.63 381.01 L 679.40 381.37 L 680.16 381.77 L 680.93 382.11 L 681.69 382.39 L 682.45 382.70 L 683.22 382.96 L 683.97 383.36 L 684.73 383.63 L 685.49 383.99 L 686.25 384.40 L 687.00 384.72 L 687.75 385.13 L 688.50 385.42 L 689.26 385.87 L 690.00 386.18 L 690.75 386.54 L 691.50 386.80 L 692.24 387.16 L 692.99 387.48 L 693.73 387.79 L 694.47 388.02 L 695.21 388.37 L 695.95 388.70 L 696.69 389.00 L 697.43 389.37 L 698.16 389.71 L 698.90 390.07 L 699.63 390.43 L 700.36 390.83 L 701.09 391.10 L 701.82 391.48 L 702.55 391.79 L 703.28 392.20 L 704.00 392.54 L 704.73 392.85 L 705.45 393.16 L 706.17 393.51 L 706.89 393.86 L 707.61 394.16 L 708.33 394.46 L 709.05 394.81 L 709.76 395.10 L 710.48 395.36 L 711.19 395.72 L 711.90 396.04 L 712.62 396.33 L 713.33 396.73 L 714.03 396.99 L 714.74 397.23 L 715.45 397.56 L 716.15 397.89 L 716.86 398.20 L 717.56 398.51 L 718.27 398.80 L 718.97 399.07 L 719.67 399.37 L 720.37 399.67 L 721.06 399.96 L 721.76 400.23 L 722.46 400.56 L 723.15 400.86 L 723.84 401.09 L 724.54 401.45 L 725.23 401.74 L 725.92 402.05 L 726.61 402.29 L 727.29 402.60 L 727.98 402.88 L 728.67 403.13 L 729.35 403.44 L 730.03 403.70 L 730.72 404.03 L 731.40 404.28 L 732.08 404.67 L 732.76 404.94 L 733.44 405.23 L 734.11 405.50 L 734.79 405.83 L 735.46 406.08 L 736.14 406.34 L 736.81 406.56 L 737.48 406.89 L 738.16 407.31 L 738.83 407.57 L 739.49 407.87 L 740.16 408.19 L 740.83 408.45 L 741.49 408.71 L 742.16 408.95 L 742.82 409.29 L 743.49 409.59 L 744.15 409.93 L 744.81 410.18 L 745.47 410.56 L 746.13 410.90 L 746.79 411.24 L 747.44 411.47 L 748.10 411.77 L 748.75 412.08 L 749.41 412.35 L 750.06 412.63 L 750.71 412.95 L 751.36 413.22 L 752.01 413.47 L 752.66 413.75 L 753.31 414.09 L 753.96 414.32 L 754.60 414.59 L 755.25 414.87 L 755.89 415.19 L 756.54 415.47 L 757.18 415.75 L 757.82 415.97 L 758.46 416.24 L 759.10 416.46 L 759.74 416.71 L 760.38 416.97 L 761.01 417.20 L 761.65 417.44 L 762.28 417.71 L 762.92 417.94 L 763.55 418.21 L 764.18 418.48 L 764.82 418.74 L 765.45 419.09 L 766.08 419.35 L 766.70 419.61 L 767.33 419.90 L 767.96 420.19 L 768.58 420.48 L 769.21 420.79 L 769.83 421.07 L 770.46 421.33 L 771.08 421.66 L 771.70 421.91 L 772.32 422.17 L 772.94 422.44 L 773.56 422.79 L 774.18 422.98 L 774.79 423.21 L 775.41 423.52 L 776.03 423.77 L 776.64 423.96 L 777.25 424.20 L 777.87 424.44 L 778.48 424.76 L 779.09 425.00 L 779.70 425.22 L 780.31 425.50 L 780.92 425.71 L 781.52 426.02 L 782.13 426.24 L 782.74 426.48 L 783.34 426.73 L 783.95 426.97 L 784.55 427.25 L 785.15 427.53 L 785.75 427.81 L 786.35 428.07 L 786.96 428.28 L 787.55 428.55 L 788.15 428.86 L 788.75 429.11 L 789.35 429.44 L 789.94 429.68 L 790.54 429.89 L 791.13 430.18 L 791.73 430.47 L 792.32 430.72 L 792.91 430.96 L 793.50 431.16 L 794.09 431.44 L 794.68 431.65 L 795.27 431.87 L 795.86 432.07 L 796.45 432.28 L 797.03 432.57 L 797.62 432.78 L 798.20 433.03 L 798.79 433.32 L 799.37 433.55 L 799.95 433.83 L 800.53 434.16 L 801.12 434.45 L 801.70 434.72 L 802.27 434.97 L 802.85 435.19 L 803.43 435.41 L 804.01 435.72 L 804.58 435.94 L 805.16 436.16 L 805.74 436.38 L 806.31 436.64 L 806.88 436.84 L 807.46 437.13 L 808.03 437.42 L 808.60 437.66 L 809.17 437.91 L 809.74 438.09 L 810.31 438.34 L 810.88 438.64 L 811.44 438.87 L 812.01 439.17 L 812.58 439.44 L 813.14 439.76 L 813.70 439.96 L 814.27 440.22 L 814.83 440.48 L 815.39 440.72 L 815.96 440.91 L 816.52 441.13 L 817.08 441.36 L 817.64 441.56 L 818.19 441.80 L 818.75 442.07 L 819.31 442.29 L 819.87 442.52 L 820.42 442.71 L 820.98 442.96 L 821.53 443.23 L 822.08 443.45 L 822.64 443.70 L 823.19 443.95 L 823.74 444.13 L 824.29 444.39 L 824.84 444.67 L 825.39 444.87 L 825.94 445.11 L 826.49 445.42 L 827.04 445.73 L 827.58 445.94 L 828.13 446.16 L 828.68 446.42 L 829.22 446.69 L 829.76 446.91 L 830.31 447.06 L 830.85 447.30 L 831.39 447.57 L 831.93 447.82 L 832.47 448.05 L 833.01 448.28 L 833.55 448.49 L 834.09 448.70 L 834.63 448.95 L 835.17 449.19 L 835.70 449.38 L 836.24 449.57 L 836.78 449.80 L 837.31 450.02 L 837.85 450.20 L 838.38 450.44 L 838.91 450.67 L 839.44 450.88 L 839.98 451.17 L 840.51 451.41 L 841.04 451.64 L 841.57 451.87 L 842.09 452.05 L 842.62 452.23 L 843.15 452.45 L 843.68 452.70 L 844.20 452.88 L 844.73 453.13 L 845.25 453.39 L 845.78 453.61 L 846.30 453.84 L 846.83 454.10 L 847.35 454.32 L 847.87 454.55 L 848.39 454.85 L 848.91 455.06 L 849.43 455.31 L 849.95 455.52 L 850.47 455.72 L 850.99 455.96 L 851.51 456.16 L 852.02 456.33 L 852.54 456.56 L 853.06 456.78 L 853.57 457.06 L 854.09 457.30 L 854.60 457.52 L 855.11 457.76 L 855.63 458.00 L 856.14 458.24 L 856.65 458.44 L 857.16 458.74 L 857.67 458.89 L 858.18 459.10 L 858.69 459.31 L 859.20 459.55 L 859.71 459.75 L 860.22 459.98 L 860.72 460.21 L 861.23 460.47 L 861.73 460.72 L 862.24 460.96 L 862.74 461.16 L 863.25 461.32 L 863.75 461.60 L 864.25 461.85 L 864.76 462.06 L 865.26 462.27 L 865.76 462.50 L 866.26 462.72 L 866.76 462.91 L 867.26 463.12 L 867.76 463.33 L 868.26 463.60 L 868.75 463.85 L 869.25 464.22 L 869.75 464.42 L 870.24 464.59 L 870.74 464.76 L 871.23 464.97 L 871.73 465.15 L 872.22 465.35 L 872.71 465.56 L 873.21 465.73 L 873.70 465.96 L 874.19 466.18 L 874.68 466.41 L 875.17 466.59 L 875.66 466.82 L 876.15 467.06 L 876.64 467.28 L 877.13 467.50 L 877.61 467.70 L 878.10 467.95 L 878.59 468.17 L 879.07 468.38 L 879.56 468.65 L 880.04 468.84 L 880.53 469.13 L 881.01 469.34 L 881.50 469.56 L 881.98 469.78 L 882.46 470.03 L 882.94 470.28 L 883.42 470.49 L 883.90 470.66 L 884.38 470.85 L 884.86 471.05 L 885.34 471.29 L 885.82 471.54 L 886.30 471.76 L 886.78 471.95 L 887.25 472.12 L 887.73 472.42 L 888.21 472.63 L 888.68 472.84 L 889.16 473.03 L 889.63 473.22 L 890.11 473.48 L 890.58 473.68 L 891.05 473.90 L 891.52 474.04 L 892.00 474.23 L 892.47 474.47 L 892.94 474.65 L 893.41 474.84 L 893.88 475.03 L 894.35 475.28 L 894.82 475.44 L 895.28 475.67 L 895.75 475.90 L 896.22 476.12 L 896.69 476.29 L 897.15 476.50 L 897.62 476.65 L 898.08 476.84 L 898.55 477.00 L 899.01 477.24 L 899.48 477.44 L 899.94 477.71 L 900.40 477.95 L 900.87 478.18 L 901.33 478.38 L 901.79 478.56 L 902.25 478.82 L 902.71 479.01 L 903.17 479.22 L 903.63 479.39 L 904.09 479.61 L 904.55 479.87 L 905.01 480.05 L 905.46 480.25 L 905.92 480.44 L 906.38 480.69 L 906.83 480.89 L 907.29 481.11 L 907.74 481.34 L 908.20 481.53 L 908.65 481.72 L 909.11 481.97 L 909.56 482.17 L 910.01 482.33 L 910.46 482.51 L 910.92 482.75 L 911.37 482.95 L 911.82 483.13 L 912.27 483.31 L 912.72 483.51 L 913.17 483.73 L 913.62 483.92 L 914.07 484.11 L 914.51 484.26 L 914.96 484.43 L 915.41 484.67 L 915.86 484.87 L 916.30 485.04 L 916.75 485.20 L 917.19 485.44 L 917.64 485.64 L 918.08 485.87 L 918.53 486.03 L 918.97 486.22 L 919.41 486.40 L 919.86 486.58 L 920.30 486.73 L 920.74 486.90 L 921.18 487.03 L 921.62 487.25 L 922.06 487.43 L 922.50 487.61 L 922.94 487.86 L 923.38 488.04 L 923.82 488.18 L 924.26 488.47 L 924.70 488.66 L 925.13 488.85 L 925.57 489.05 L 926.01 489.26 L 926.44 489.43 L 926.88 489.61 L 927.31 489.84 L 927.75 490.03 L 928.18 490.18 L 928.62 490.38 L 929.05 490.59 L 929.48 490.74 L 929.92 490.99 L 930.35 491.18 L 930.78 491.34 L 931.21 491.52 L 931.64 491.68 L 932.07 491.87 L 932.50 492.05 L 932.93 492.30 L 933.36 492.46 L 933.79 492.69 L 934.22 492.91 L 934.65 493.10 L 935.07 493.29 L 935.50 493.46 L 935.93 493.63 L 936.35 493.80 L 936.78 494.05 L 937.21 494.22 L 937.63 494.43 L 938.06 494.61 L 938.48 494.79 L 938.90 494.96 L 939.33 495.13 L 939.75 495.33 L 940.17 495.52 L 940.59 495.72 L 941.02 495.88 L 941.44 496.04 L 941.86 496.21 L 942.28 496.43 L 942.70 496.58 L 943.12 496.77 L 943.54 496.95 L 943.96 497.13 L 944.38 497.32 L 944.79 497.47 L 945.21 497.67 L 945.63 497.87 L 946.00 498.00" />
-        <g class="selected-dots"><circle cx="272.13" cy="207.28" r="3.8"><title>offenders: rank 10,104, count 4,976,449</title></circle><circle cx="277.29" cy="209.48" r="3.8"><title>scattered: rank 10,224, count 4,879,386</title></circle><circle cx="286.31" cy="213.06" r="3.8"><title>profitable: rank 10,437, count 4,725,403</title></circle><circle cx="293.82" cy="216.00" r="3.8"><title>demon: rank 10,618, count 4,602,331</title></circle><circle cx="352.31" cy="240.24" r="3.8"><title>executing: rank 12,138, count 3,703,273</title></circle><circle cx="354.90" cy="241.43" r="3.8"><title>meanings: rank 12,210, count 3,664,177</title></circle><circle cx="366.42" cy="245.96" r="3.8"><title>crimson: rank 12,536, count 3,518,175</title></circle><circle cx="394.67" cy="257.20" r="3.8"><title>strangers: rank 13,373, count 3,180,865</title></circle><circle cx="400.10" cy="259.44" r="3.8"><title>smoked: rank 13,540, count 3,117,683</title></circle><circle cx="404.02" cy="261.26" r="3.8"><title>shocks: rank 13,662, count 3,067,296</title></circle><circle cx="405.42" cy="261.94" r="3.8"><title>badges: rank 13,706, count 3,048,651</title></circle><circle cx="407.37" cy="262.93" r="3.8"><title>averaged: rank 13,767, count 3,021,741</title></circle><circle cx="408.85" cy="263.52" r="3.8"><title>purity: rank 13,814, count 3,005,735</title></circle><circle cx="411.44" cy="264.70" r="3.8"><title>brewing: rank 13,896, count 2,974,086</title></circle><circle cx="417.66" cy="267.48" r="3.8"><title>supposedly: rank 14,095, count 2,900,944</title></circle><circle cx="419.70" cy="268.27" r="3.8"><title>excludes: rank 14,161, count 2,880,324</title></circle><circle cx="421.24" cy="268.98" r="3.8"><title>deliberately: rank 14,211, count 2,862,093</title></circle><circle cx="442.94" cy="278.46" r="3.8"><title>moderately: rank 14,934, count 2,628,951</title></circle><circle cx="454.69" cy="283.88" r="3.8"><title>disadvantage: rank 15,341, count 2,504,267</title></circle><circle cx="455.32" cy="284.07" r="3.8"><title>petitions: rank 15,363, count 2,500,009</title></circle><circle cx="462.26" cy="287.37" r="3.8"><title>horns: rank 15,609, count 2,427,037</title></circle><circle cx="467.66" cy="289.51" r="3.8"><title>cords: rank 15,803, count 2,380,982</title></circle><circle cx="469.92" cy="290.46" r="3.8"><title>ovarian: rank 15,885, count 2,360,849</title></circle><circle cx="474.06" cy="292.31" r="3.8"><title>acknowledges: rank 16,036, count 2,321,868</title></circle><circle cx="479.64" cy="294.69" r="3.8"><title>exceptionally: rank 16,242, count 2,272,954</title></circle><circle cx="486.95" cy="297.60" r="3.8"><title>recurrent: rank 16,516, count 2,214,373</title></circle><circle cx="488.46" cy="298.19" r="3.8"><title>parcels: rank 16,573, count 2,202,732</title></circle><circle cx="498.06" cy="302.29" r="3.8"><title>appealed: rank 16,941, count 2,123,326</title></circle><circle cx="498.11" cy="302.30" r="3.8"><title>surveyors: rank 16,943, count 2,123,090</title></circle><circle cx="500.97" cy="303.70" r="3.8"><title>utter: rank 17,054, count 2,096,533</title></circle><circle cx="501.32" cy="303.88" r="3.8"><title>lax: rank 17,068, count 2,093,131</title></circle><circle cx="507.18" cy="306.40" r="3.8"><title>inmate: rank 17,298, count 2,046,395</title></circle><circle cx="507.76" cy="306.65" r="3.8"><title>discomfort: rank 17,321, count 2,041,894</title></circle><circle cx="514.62" cy="309.73" r="3.8"><title>practicable: rank 17,595, count 1,986,296</title></circle><circle cx="518.97" cy="311.47" r="3.8"><title>buggy: rank 17,771, count 1,955,438</title></circle><circle cx="523.03" cy="313.19" r="3.8"><title>stare: rank 17,937, count 1,925,618</title></circle><circle cx="529.95" cy="316.03" r="3.8"><title>suction: rank 18,223, count 1,877,189</title></circle><circle cx="542.51" cy="321.31" r="3.8"><title>multiplied: rank 18,754, count 1,790,425</title></circle><circle cx="544.95" cy="322.62" r="3.8"><title>occult: rank 18,859, count 1,769,403</title></circle><circle cx="553.39" cy="326.06" r="3.8"><title>retiring: rank 19,227, count 1,715,699</title></circle><circle cx="568.57" cy="332.70" r="3.8"><title>tyranny: rank 19,906, count 1,616,527</title></circle><circle cx="571.74" cy="334.09" r="3.8"><title>jug: rank 20,051, count 1,596,524</title></circle><circle cx="594.20" cy="344.15" r="3.8"><title>friendships: rank 21,108, count 1,458,801</title></circle><circle cx="601.92" cy="347.61" r="3.8"><title>tak: rank 21,484, count 1,414,341</title></circle><circle cx="610.12" cy="351.32" r="3.8"><title>folly: rank 21,891, count 1,367,992</title></circle><circle cx="614.39" cy="353.18" r="3.8"><title>prosecuted: rank 22,106, count 1,345,345</title></circle><circle cx="615.34" cy="353.58" r="3.8"><title>denomination: rank 22,154, count 1,340,584</title></circle><circle cx="618.37" cy="354.94" r="3.8"><title>enumerated: rank 22,308, count 1,324,371</title></circle><circle cx="626.49" cy="358.41" r="3.8"><title>morphine: rank 22,726, count 1,283,748</title></circle><circle cx="628.00" cy="359.01" r="3.8"><title>pinned: rank 22,805, count 1,276,850</title></circle><circle cx="633.07" cy="361.16" r="3.8"><title>dubious: rank 23,071, count 1,252,536</title></circle><circle cx="648.83" cy="368.06" r="3.8"><title>arrears: rank 23,918, count 1,177,409</title></circle><circle cx="663.61" cy="374.52" r="3.8"><title>exhaustion: rank 24,740, count 1,111,143</title></circle><circle cx="667.72" cy="376.37" r="3.8"><title>bedside: rank 24,974, count 1,092,877</title></circle><circle cx="668.68" cy="376.80" r="3.8"><title>bleak: rank 25,029, count 1,088,632</title></circle><circle cx="672.85" cy="378.54" r="3.8"><title>undecided: rank 25,269, count 1,071,780</title></circle><circle cx="672.87" cy="378.55" r="3.8"><title>startling: rank 25,270, count 1,071,701</title></circle><circle cx="673.18" cy="378.68" r="3.8"><title>halves: rank 25,288, count 1,070,410</title></circle><circle cx="675.58" cy="379.65" r="3.8"><title>piers: rank 25,427, count 1,061,175</title></circle><circle cx="678.15" cy="380.84" r="3.8"><title>projecting: rank 25,577, count 1,049,902</title></circle><circle cx="688.82" cy="385.62" r="3.8"><title>guarding: rank 26,209, count 1,005,862</title></circle><circle cx="696.79" cy="389.04" r="3.8"><title>circulate: rank 26,691, count 975,458</title></circle><circle cx="702.87" cy="391.97" r="3.8"><title>sylvan: rank 27,065, count 950,229</title></circle><circle cx="705.74" cy="393.31" r="3.8"><title>reiterated: rank 27,243, count 938,877</title></circle><circle cx="714.35" cy="397.12" r="3.8"><title>moaning: rank 27,785, count 907,347</title></circle><circle cx="725.20" cy="401.72" r="3.8"><title>pronounce: rank 28,483, count 870,681</title></circle><circle cx="731.73" cy="404.45" r="3.8"><title>caprice: rank 28,912, count 849,643</title></circle><circle cx="745.53" cy="410.58" r="3.8"><title>dispositions: rank 29,839, count 804,177</title></circle><circle cx="746.84" cy="411.27" r="3.8"><title>ascend: rank 29,929, count 799,236</title></circle><circle cx="748.17" cy="411.80" r="3.8"><title>doubtless: rank 30,020, count 795,425</title></circle><circle cx="749.26" cy="412.30" r="3.8"><title>clutches: rank 30,095, count 791,875</title></circle><circle cx="754.29" cy="414.48" r="3.8"><title>dishonesty: rank 30,443, count 776,567</title></circle><circle cx="757.34" cy="415.81" r="3.8"><title>guise: rank 30,656, count 767,344</title></circle><circle cx="767.18" cy="419.83" r="3.8"><title>triumphant: rank 31,354, count 740,201</title></circle><circle cx="768.36" cy="420.37" r="3.8"><title>dormitory: rank 31,439, count 736,616</title></circle><circle cx="783.60" cy="426.81" r="3.8"><title>dictation: rank 32,554, count 695,273</title></circle><circle cx="783.92" cy="426.96" r="3.8"><title>fillet: rank 32,578, count 694,345</title></circle><circle cx="785.49" cy="427.68" r="3.8"><title>robbers: rank 32,695, count 689,884</title></circle><circle cx="796.29" cy="432.23" r="3.8"><title>roughness: rank 33,513, count 662,305</title></circle><circle cx="799.81" cy="433.79" r="3.8"><title>legions: rank 33,784, count 653,127</title></circle><circle cx="803.41" cy="435.40" r="3.8"><title>vulture: rank 34,063, count 643,760</title></circle><circle cx="805.12" cy="436.15" r="3.8"><title>feces: rank 34,197, count 639,441</title></circle><circle cx="806.68" cy="436.78" r="3.8"><title>manifests: rank 34,319, count 635,847</title></circle><circle cx="811.88" cy="439.12" r="3.8"><title>whirl: rank 34,730, count 622,629</title></circle><circle cx="819.26" cy="442.28" r="3.8"><title>scourge: rank 35,321, count 605,240</title></circle><circle cx="820.69" cy="442.81" r="3.8"><title>intolerable: rank 35,437, count 602,372</title></circle><circle cx="822.48" cy="443.60" r="3.8"><title>romances: rank 35,582, count 598,133</title></circle><circle cx="823.21" cy="443.96" r="3.8"><title>intimates: rank 35,642, count 596,202</title></circle><circle cx="839.88" cy="451.13" r="3.8"><title>apologized: rank 37,027, count 559,056</title></circle><circle cx="841.04" cy="451.64" r="3.8"><title>proclaiming: rank 37,125, count 556,541</title></circle><circle cx="844.18" cy="452.87" r="3.8"><title>volley: rank 37,393, count 550,438</title></circle><circle cx="844.59" cy="453.03" r="3.8"><title>bridle: rank 37,428, count 549,609</title></circle><circle cx="847.38" cy="454.33" r="3.8"><title>mattered: rank 37,668, count 543,236</title></circle><circle cx="852.78" cy="456.66" r="3.8"><title>murky: rank 38,136, count 532,036</title></circle><circle cx="853.94" cy="457.25" r="3.8"><title>embellished: rank 38,237, count 529,217</title></circle><circle cx="858.49" cy="459.22" r="3.8"><title>workmen: rank 38,637, count 519,975</title></circle><circle cx="868.93" cy="463.93" r="3.8"><title>nodding: rank 39,571, count 498,441</title></circle><circle cx="870.69" cy="464.75" r="3.8"><title>unbounded: rank 39,731, count 494,813</title></circle><circle cx="870.96" cy="464.83" r="3.8"><title>saddened: rank 39,755, count 494,456</title></circle><circle cx="871.70" cy="465.14" r="3.8"><title>precipitated: rank 39,823, count 493,058</title></circle></g>
-        <g class="callouts"><line class="callout-line" x1="272.13" y1="207.28" x2="272.13" y2="191.28" /><text class="callout" x="272.13" y="186.28" text-anchor="middle">offenders</text><line class="callout-line" x1="633.07" y1="361.16" x2="633.07" y2="345.16" /><text class="callout" x="633.07" y="340.16" text-anchor="middle">dubious</text><line class="callout-line" x1="871.70" y1="465.14" x2="871.70" y2="449.14" /><text class="callout" x="871.70" y="444.14" text-anchor="middle">precipitated</text></g>
+        <g class="selected-dots"><circle cx="268.44" cy="205.88" r="3.8"><title>nonfiction: rank 10,019, count 5,039,708</title></circle><circle cx="273.95" cy="208.19" r="3.8"><title>phenomena: rank 10,146, count 4,936,094</title></circle><circle cx="274.85" cy="208.64" r="3.8"><title>preschool: rank 10,167, count 4,916,187</title></circle><circle cx="281.89" cy="211.40" r="3.8"><title>observers: rank 10,332, count 4,796,192</title></circle><circle cx="283.96" cy="212.28" r="3.8"><title>lining: rank 10,381, count 4,758,401</title></circle><circle cx="286.98" cy="213.31" r="3.8"><title>glove: rank 10,453, count 4,714,578</title></circle><circle cx="287.06" cy="213.32" r="3.8"><title>wastewater: rank 10,455, count 4,714,167</title></circle><circle cx="293.70" cy="215.98" r="3.8"><title>relaxed: rank 10,615, count 4,603,097</title></circle><circle cx="294.85" cy="216.42" r="3.8"><title>adhesive: rank 10,643, count 4,585,279</title></circle><circle cx="314.29" cy="224.46" r="3.8"><title>aperture: rank 11,127, count 4,266,263</title></circle><circle cx="316.41" cy="225.11" r="3.8"><title>intuitive: rank 11,181, count 4,241,404</title></circle><circle cx="316.80" cy="225.30" r="3.8"><title>coordinating: rank 11,191, count 4,234,379</title></circle><circle cx="323.28" cy="227.87" r="3.8"><title>borrow: rank 11,358, count 4,137,645</title></circle><circle cx="335.42" cy="233.09" r="3.8"><title>shocked: rank 11,678, count 3,948,680</title></circle><circle cx="336.32" cy="233.53" r="3.8"><title>diaper: rank 11,702, count 3,933,145</title></circle><circle cx="337.59" cy="234.16" r="3.8"><title>refuge: rank 11,736, count 3,910,887</title></circle><circle cx="345.27" cy="237.24" r="3.8"><title>contexts: rank 11,944, count 3,804,487</title></circle><circle cx="348.37" cy="238.62" r="3.8"><title>rename: rank 12,029, count 3,757,535</title></circle><circle cx="353.03" cy="240.62" r="3.8"><title>petrol: rank 12,158, count 3,690,703</title></circle><circle cx="362.42" cy="244.44" r="3.8"><title>lever: rank 12,422, count 3,566,558</title></circle><circle cx="367.57" cy="246.48" r="3.8"><title>webs: rank 12,569, count 3,501,990</title></circle><circle cx="369.89" cy="247.46" r="3.8"><title>honours: rank 12,636, count 3,471,334</title></circle><circle cx="372.68" cy="248.42" r="3.8"><title>abundant: rank 12,717, count 3,441,495</title></circle><circle cx="377.64" cy="250.48" r="3.8"><title>competitor: rank 12,862, count 3,378,603</title></circle><circle cx="379.44" cy="251.18" r="3.8"><title>encounters: rank 12,915, count 3,357,331</title></circle><circle cx="383.71" cy="252.97" r="3.8"><title>protests: rank 13,042, count 3,303,934</title></circle><circle cx="389.61" cy="255.21" r="3.8"><title>vaccines: rank 13,219, count 3,238,310</title></circle><circle cx="389.94" cy="255.32" r="3.8"><title>turbine: rank 13,229, count 3,235,102</title></circle><circle cx="399.26" cy="259.09" r="3.8"><title>palms: rank 13,514, count 3,127,466</title></circle><circle cx="400.74" cy="259.76" r="3.8"><title>textures: rank 13,560, count 3,108,758</title></circle><circle cx="405.17" cy="261.81" r="3.8"><title>microscope: rank 13,698, count 3,052,163</title></circle><circle cx="405.65" cy="262.03" r="3.8"><title>checksum: rank 13,713, count 3,046,204</title></circle><circle cx="407.65" cy="263.02" r="3.8"><title>worksheet: rank 13,776, count 3,019,301</title></circle><circle cx="411.44" cy="264.70" r="3.8"><title>brewing: rank 13,896, count 2,974,086</title></circle><circle cx="414.39" cy="266.08" r="3.8"><title>autonomy: rank 13,990, count 2,937,673</title></circle><circle cx="416.63" cy="267.00" r="3.8"><title>allergic: rank 14,062, count 2,913,453</title></circle><circle cx="416.94" cy="267.13" r="3.8"><title>addict: rank 14,072, count 2,910,117</title></circle><circle cx="417.38" cy="267.36" r="3.8"><title>juniors: rank 14,086, count 2,904,014</title></circle><circle cx="417.69" cy="267.52" r="3.8"><title>admits: rank 14,096, count 2,899,936</title></circle><circle cx="418.77" cy="267.86" r="3.8"><title>padding: rank 14,131, count 2,890,936</title></circle><circle cx="420.35" cy="268.65" r="3.8"><title>comprehension: rank 14,182, count 2,870,530</title></circle><circle cx="426.77" cy="271.58" r="3.8"><title>flea: rank 14,392, count 2,796,116</title></circle><circle cx="433.56" cy="274.50" r="3.8"><title>karate: rank 14,617, count 2,723,996</title></circle><circle cx="434.60" cy="274.96" r="3.8"><title>ceremonies: rank 14,652, count 2,712,791</title></circle><circle cx="437.10" cy="276.22" r="3.8"><title>invaluable: rank 14,736, count 2,682,391</title></circle><circle cx="443.61" cy="278.84" r="3.8"><title>undergo: rank 14,957, count 2,620,082</title></circle><circle cx="455.88" cy="284.36" r="3.8"><title>mirage: rank 15,383, count 2,493,561</title></circle><circle cx="471.68" cy="291.21" r="3.8"><title>wrought: rank 15,949, count 2,345,069</title></circle><circle cx="475.31" cy="292.88" r="3.8"><title>comfortably: rank 16,082, count 2,310,081</title></circle><circle cx="476.86" cy="293.45" r="3.8"><title>roadside: rank 16,139, count 2,298,262</title></circle><circle cx="496.28" cy="301.56" r="3.8"><title>cessation: rank 16,872, count 2,137,188</title></circle><circle cx="496.97" cy="301.87" r="3.8"><title>psychotherapy: rank 16,899, count 2,131,314</title></circle><circle cx="501.91" cy="304.08" r="3.8"><title>emblem: rank 17,091, count 2,089,468</title></circle><circle cx="502.07" cy="304.14" r="3.8"><title>dunes: rank 17,097, count 2,088,285</title></circle><circle cx="505.68" cy="305.76" r="3.8"><title>praised: rank 17,239, count 2,058,171</title></circle><circle cx="516.97" cy="310.68" r="3.8"><title>horseback: rank 17,690, count 1,969,441</title></circle><circle cx="519.85" cy="311.85" r="3.8"><title>bullying: rank 17,807, count 1,948,806</title></circle><circle cx="523.69" cy="313.45" r="3.8"><title>robotic: rank 17,964, count 1,921,045</title></circle><circle cx="526.09" cy="314.41" r="3.8"><title>crypt: rank 18,063, count 1,904,607</title></circle><circle cx="528.48" cy="315.43" r="3.8"><title>cubes: rank 18,162, count 1,887,321</title></circle><circle cx="529.90" cy="316.00" r="3.8"><title>sanity: rank 18,221, count 1,877,686</title></circle><circle cx="538.83" cy="319.76" r="3.8"><title>forefront: rank 18,597, count 1,815,372</title></circle><circle cx="540.59" cy="320.48" r="3.8"><title>teal: rank 18,672, count 1,803,669</title></circle><circle cx="543.00" cy="321.59" r="3.8"><title>frontiers: rank 18,775, count 1,785,820</title></circle><circle cx="544.06" cy="322.13" r="3.8"><title>drank: rank 18,821, count 1,777,243</title></circle><circle cx="545.78" cy="322.88" r="3.8"><title>watersports: rank 18,895, count 1,765,286</title></circle><circle cx="547.26" cy="323.55" r="3.8"><title>commute: rank 18,959, count 1,754,751</title></circle><circle cx="548.64" cy="324.10" r="3.8"><title>prognosis: rank 19,019, count 1,746,165</title></circle><circle cx="548.98" cy="324.23" r="3.8"><title>determinants: rank 19,034, count 1,744,062</title></circle><circle cx="552.92" cy="325.88" r="3.8"><title>phishing: rank 19,206, count 1,718,427</title></circle><circle cx="553.33" cy="326.02" r="3.8"><title>newsfeed: rank 19,224, count 1,716,299</title></circle><circle cx="554.42" cy="326.39" r="3.8"><title>ibn: rank 19,272, count 1,710,709</title></circle><circle cx="561.21" cy="329.41" r="3.8"><title>overdrive: rank 19,574, count 1,664,969</title></circle><circle cx="561.59" cy="329.58" r="3.8"><title>coffin: rank 19,591, count 1,662,468</title></circle><circle cx="564.46" cy="330.76" r="3.8"><title>moi: rank 19,720, count 1,644,951</title></circle><circle cx="564.49" cy="330.76" r="3.8"><title>ode: rank 19,721, count 1,644,895</title></circle><circle cx="567.27" cy="332.14" r="3.8"><title>conferred: rank 19,847, count 1,624,719</title></circle><circle cx="569.01" cy="332.92" r="3.8"><title>absorbing: rank 19,926, count 1,613,367</title></circle><circle cx="569.84" cy="333.30" r="3.8"><title>wilder: rank 19,964, count 1,607,947</title></circle><circle cx="576.70" cy="336.38" r="3.8"><title>sultan: rank 20,280, count 1,564,160</title></circle><circle cx="582.57" cy="339.03" r="3.8"><title>nah: rank 20,554, count 1,527,428</title></circle><circle cx="590.35" cy="342.40" r="3.8"><title>pinot: rank 20,923, count 1,481,847</title></circle><circle cx="591.91" cy="343.17" r="3.8"><title>deputies: rank 20,998, count 1,471,758</title></circle><circle cx="596.61" cy="345.18" r="3.8"><title>socioeconomic: rank 21,225, count 1,445,397</title></circle><circle cx="597.27" cy="345.54" r="3.8"><title>inherit: rank 21,257, count 1,440,810</title></circle><circle cx="597.93" cy="345.81" r="3.8"><title>surreal: rank 21,289, count 1,437,237</title></circle><circle cx="598.20" cy="345.93" r="3.8"><title>encrypt: rank 21,302, count 1,435,748</title></circle><circle cx="598.53" cy="346.09" r="3.8"><title>constable: rank 21,318, count 1,433,656</title></circle><circle cx="601.04" cy="347.25" r="3.8"><title>phono: rank 21,441, count 1,418,855</title></circle><circle cx="605.14" cy="349.07" r="3.8"><title>bps: rank 21,643, count 1,395,862</title></circle><circle cx="609.06" cy="350.82" r="3.8"><title>renters: rank 21,838, count 1,374,199</title></circle><circle cx="612.67" cy="352.47" r="3.8"><title>radiological: rank 22,019, count 1,354,035</title></circle><circle cx="612.89" cy="352.51" r="3.8"><title>motorway: rank 22,030, count 1,353,494</title></circle><circle cx="613.28" cy="352.68" r="3.8"><title>iodine: rank 22,050, count 1,351,488</title></circle><circle cx="619.09" cy="355.28" r="3.8"><title>decorators: rank 22,345, count 1,320,345</title></circle><circle cx="619.23" cy="355.33" r="3.8"><title>psoriasis: rank 22,352, count 1,319,757</title></circle><circle cx="622.62" cy="356.83" r="3.8"><title>motorists: rank 22,526, count 1,302,021</title></circle><circle cx="626.41" cy="358.37" r="3.8"><title>biodiesel: rank 22,722, count 1,284,181</title></circle><circle cx="629.00" cy="359.38" r="3.8"><title>presume: rank 22,857, count 1,272,666</title></circle><circle cx="634.02" cy="361.64" r="3.8"><title>dharma: rank 23,121, count 1,247,164</title></circle><circle cx="635.70" cy="362.42" r="3.8"><title>calligraphy: rank 23,210, count 1,238,383</title></circle><circle cx="637.82" cy="363.23" r="3.8"><title>starship: rank 23,323, count 1,229,480</title></circle><circle cx="638.48" cy="363.50" r="3.8"><title>livelihood: rank 23,358, count 1,226,471</title></circle><circle cx="640.62" cy="364.34" r="3.8"><title>drowned: rank 23,473, count 1,217,295</title></circle><circle cx="641.28" cy="364.65" r="3.8"><title>sweeps: rank 23,508, count 1,213,879</title></circle><circle cx="642.33" cy="365.19" r="3.8"><title>calves: rank 23,565, count 1,208,012</title></circle><circle cx="642.48" cy="365.25" r="3.8"><title>lacy: rank 23,573, count 1,207,457</title></circle><circle cx="645.61" cy="366.61" r="3.8"><title>walkthroughs: rank 23,742, count 1,192,778</title></circle><circle cx="650.80" cy="368.97" r="3.8"><title>deliverables: rank 24,026, count 1,167,801</title></circle><circle cx="651.89" cy="369.44" r="3.8"><title>inset: rank 24,086, count 1,162,898</title></circle><circle cx="652.91" cy="369.85" r="3.8"><title>whispers: rank 24,142, count 1,158,619</title></circle><circle cx="656.43" cy="371.50" r="3.8"><title>digitized: rank 24,337, count 1,141,575</title></circle><circle cx="662.33" cy="373.97" r="3.8"><title>palmetto: rank 24,668, count 1,116,605</title></circle><circle cx="664.08" cy="374.77" r="3.8"><title>pleasantly: rank 24,767, count 1,108,641</title></circle><circle cx="664.45" cy="374.99" r="3.8"><title>communicates: rank 24,788, count 1,106,439</title></circle><circle cx="667.56" cy="376.31" r="3.8"><title>wildfire: rank 24,965, count 1,093,379</title></circle><circle cx="668.00" cy="376.49" r="3.8"><title>fruity: rank 24,990, count 1,091,678</title></circle><circle cx="670.11" cy="377.50" r="3.8"><title>sonnet: rank 25,111, count 1,081,841</title></circle><circle cx="672.11" cy="378.29" r="3.8"><title>bong: rank 25,226, count 1,074,219</title></circle><circle cx="672.94" cy="378.56" r="3.8"><title>inadvertently: rank 25,274, count 1,071,570</title></circle><circle cx="674.68" cy="379.25" r="3.8"><title>reacted: rank 25,375, count 1,064,981</title></circle><circle cx="678.03" cy="380.78" r="3.8"><title>interplay: rank 25,570, count 1,050,504</title></circle><circle cx="679.94" cy="381.66" r="3.8"><title>azure: rank 25,682, count 1,042,257</title></circle><circle cx="680.61" cy="382.04" r="3.8"><title>pathogenesis: rank 25,721, count 1,038,707</title></circle><circle cx="681.25" cy="382.22" r="3.8"><title>workbench: rank 25,759, count 1,037,033</title></circle><circle cx="683.79" cy="383.29" r="3.8"><title>frontage: rank 25,909, count 1,027,134</title></circle><circle cx="685.41" cy="383.93" r="3.8"><title>marketer: rank 26,005, count 1,021,263</title></circle><circle cx="686.38" cy="384.44" r="3.8"><title>priori: rank 26,063, count 1,016,603</title></circle><circle cx="687.65" cy="385.09" r="3.8"><title>unison: rank 26,139, count 1,010,644</title></circle><circle cx="691.20" cy="386.72" r="3.8"><title>bassist: rank 26,352, count 995,968</title></circle><circle cx="694.34" cy="387.98" r="3.8"><title>waterfowl: rank 26,542, count 984,798</title></circle><circle cx="696.33" cy="388.86" r="3.8"><title>payback: rank 26,663, count 977,064</title></circle><circle cx="703.53" cy="392.35" r="3.8"><title>slipper: rank 27,106, count 946,965</title></circle><circle cx="704.29" cy="392.68" r="3.8"><title>governs: rank 27,153, count 944,138</title></circle><circle cx="705.90" cy="393.40" r="3.8"><title>extraordinarily: rank 27,253, count 938,117</title></circle><circle cx="709.19" cy="394.86" r="3.8"><title>antagonist: rank 27,459, count 925,886</title></circle><circle cx="709.25" cy="394.88" r="3.8"><title>cadre: rank 27,463, count 925,745</title></circle><circle cx="709.68" cy="395.07" r="3.8"><title>velour: rank 27,490, count 924,178</title></circle><circle cx="711.79" cy="395.97" r="3.8"><title>marketable: rank 27,623, count 916,698</title></circle><circle cx="715.50" cy="397.58" r="3.8"><title>machined: rank 27,858, count 903,576</title></circle><circle cx="715.97" cy="397.80" r="3.8"><title>liturgical: rank 27,888, count 901,774</title></circle><circle cx="724.83" cy="401.58" r="3.8"><title>cyclones: rank 28,459, count 871,733</title></circle><circle cx="725.81" cy="402.00" r="3.8"><title>lament: rank 28,523, count 868,477</title></circle><circle cx="725.84" cy="402.01" r="3.8"><title>terraces: rank 28,525, count 868,409</title></circle><circle cx="728.29" cy="402.97" r="3.8"><title>repo: rank 28,685, count 860,967</title></circle><circle cx="730.25" cy="403.82" r="3.8"><title>hassles: rank 28,814, count 854,443</title></circle><circle cx="737.51" cy="406.93" r="3.8"><title>mosques: rank 29,297, count 830,923</title></circle><circle cx="740.75" cy="408.43" r="3.8"><title>distractions: rank 29,515, count 819,863</title></circle><circle cx="743.37" cy="409.54" r="3.8"><title>tentatively: rank 29,692, count 811,676</title></circle><circle cx="744.40" cy="410.02" r="3.8"><title>conceptions: rank 29,762, count 808,213</title></circle><circle cx="744.53" cy="410.06" r="3.8"><title>cfg: rank 29,771, count 807,901</title></circle><circle cx="746.26" cy="410.93" r="3.8"><title>vigilance: rank 29,889, count 801,669</title></circle><circle cx="749.54" cy="412.41" r="3.8"><title>humankind: rank 30,114, count 791,114</title></circle><circle cx="752.42" cy="413.65" r="3.8"><title>forearm: rank 30,313, count 782,319</title></circle><circle cx="755.61" cy="415.06" r="3.8"><title>eerie: rank 30,535, count 772,484</title></circle><circle cx="757.69" cy="415.93" r="3.8"><title>electrochemical: rank 30,681, count 766,527</title></circle><circle cx="758.15" cy="416.12" r="3.8"><title>jetty: rank 30,713, count 765,224</title></circle><circle cx="760.19" cy="416.92" r="3.8"><title>ascertained: rank 30,857, count 759,738</title></circle><circle cx="762.88" cy="417.92" r="3.8"><title>varnish: rank 31,047, count 752,945</title></circle><circle cx="763.78" cy="418.32" r="3.8"><title>refinements: rank 31,111, count 750,263</title></circle><circle cx="763.82" cy="418.36" r="3.8"><title>repost: rank 31,114, count 750,029</title></circle><circle cx="769.90" cy="421.09" r="3.8"><title>streaks: rank 31,550, count 731,843</title></circle><circle cx="779.75" cy="425.25" r="3.8"><title>subtracted: rank 32,269, count 705,073</title></circle><circle cx="782.52" cy="426.36" r="3.8"><title>pathologist: rank 32,474, count 698,084</title></circle><circle cx="783.27" cy="426.69" r="3.8"><title>irradiated: rank 32,530, count 696,038</title></circle><circle cx="784.64" cy="427.30" r="3.8"><title>sari: rank 32,632, count 692,213</title></circle><circle cx="787.46" cy="428.51" r="3.8"><title>hydrophobic: rank 32,843, count 684,750</title></circle><circle cx="794.28" cy="431.52" r="3.8"><title>prim: rank 33,359, count 666,550</title></circle><circle cx="796.52" cy="432.32" r="3.8"><title>feudal: rank 33,531, count 661,772</title></circle><circle cx="803.83" cy="435.62" r="3.8"><title>receptacles: rank 34,096, count 642,454</title></circle><circle cx="805.98" cy="436.48" r="3.8"><title>socialization: rank 34,264, count 637,564</title></circle><circle cx="809.23" cy="437.92" r="3.8"><title>cosmological: rank 34,520, count 629,347</title></circle><circle cx="810.47" cy="438.44" r="3.8"><title>compensating: rank 34,618, count 626,448</title></circle><circle cx="811.46" cy="438.88" r="3.8"><title>guestrooms: rank 34,696, count 623,988</title></circle><circle cx="817.10" cy="441.37" r="3.8"><title>dendritic: rank 35,147, count 610,213</title></circle><circle cx="820.40" cy="442.70" r="3.8"><title>unskilled: rank 35,413, count 602,968</title></circle><circle cx="821.62" cy="443.28" r="3.8"><title>numerator: rank 35,512, count 599,807</title></circle><circle cx="826.27" cy="445.28" r="3.8"><title>biodegradable: rank 35,892, count 589,155</title></circle><circle cx="830.03" cy="446.98" r="3.8"><title>lagging: rank 36,202, count 580,241</title></circle><circle cx="831.91" cy="447.81" r="3.8"><title>radii: rank 36,358, count 575,939</title></circle><circle cx="832.87" cy="448.20" r="3.8"><title>overflowing: rank 36,438, count 573,925</title></circle><circle cx="834.07" cy="448.70" r="3.8"><title>croquet: rank 36,538, count 571,392</title></circle><circle cx="834.93" cy="449.09" r="3.8"><title>ceasefire: rank 36,610, count 569,390</title></circle><circle cx="835.23" cy="449.22" r="3.8"><title>creatinine: rank 36,635, count 568,725</title></circle><circle cx="841.00" cy="451.63" r="3.8"><title>landmines: rank 37,122, count 556,584</title></circle><circle cx="842.02" cy="452.03" r="3.8"><title>erections: rank 37,209, count 554,572</title></circle><circle cx="843.84" cy="452.77" r="3.8"><title>multifunctional: rank 37,364, count 550,923</title></circle><circle cx="844.60" cy="453.06" r="3.8"><title>revamp: rank 37,429, count 549,489</title></circle><circle cx="846.78" cy="454.08" r="3.8"><title>subdomain: rank 37,616, count 544,467</title></circle><circle cx="848.77" cy="455.00" r="3.8"><title>subspecies: rank 37,788, count 540,016</title></circle><circle cx="850.52" cy="455.74" r="3.8"><title>nuance: rank 37,939, count 536,418</title></circle><circle cx="851.32" cy="456.09" r="3.8"><title>freer: rank 38,009, count 534,734</title></circle><circle cx="852.94" cy="456.72" r="3.8"><title>yanks: rank 38,150, count 531,722</title></circle><circle cx="853.98" cy="457.26" r="3.8"><title>photojournalism: rank 38,241, count 529,167</title></circle><circle cx="858.66" cy="459.29" r="3.8"><title>pronoun: rank 38,652, count 519,635</title></circle><circle cx="862.64" cy="461.12" r="3.8"><title>subtropical: rank 39,006, count 511,155</title></circle><circle cx="869.16" cy="464.16" r="3.8"><title>unbeaten: rank 39,592, count 497,426</title></circle><circle cx="869.22" cy="464.18" r="3.8"><title>aloft: rank 39,597, count 497,342</title></circle><circle cx="870.78" cy="464.78" r="3.8"><title>encased: rank 39,739, count 494,670</title></circle><circle cx="870.86" cy="464.80" r="3.8"><title>credentialing: rank 39,746, count 494,584</title></circle></g>
+        <g class="callouts"><line class="callout-line" x1="268.44" y1="205.88" x2="268.44" y2="189.88" /><text class="callout" x="268.44" y="184.88" text-anchor="middle">nonfiction</text><line class="callout-line" x1="635.70" y1="362.42" x2="635.70" y2="346.42" /><text class="callout" x="635.70" y="341.42" text-anchor="middle">calligraphy</text><line class="callout-line" x1="870.86" y1="464.80" x2="870.86" y2="448.80" /><text class="callout" x="870.86" y="443.80" text-anchor="middle">credentialing</text></g>
         <line class="axis" x1="124" y1="498" x2="946" y2="498" />
         <line class="axis" x1="124" y1="152" x2="124" y2="498" />
         <g class="axis-labels"><text x="170.06" y="536" text-anchor="middle">8,000</text><text x="267.61" y="536" text-anchor="middle">10,000</text><text x="444.86" y="536" text-anchor="middle">15,000</text><text x="570.63" y="536" text-anchor="middle">20,000</text><text x="747.88" y="536" text-anchor="middle">30,000</text><text x="873.64" y="536" text-anchor="middle">40,000</text><text x="112" y="467.58" text-anchor="end">500,000</text><text x="112" y="422.36" text-anchor="end">750,000</text><text x="112" y="390.27" text-anchor="end">1,000,000</text><text x="112" y="312.96" text-anchor="end">2,000,000</text><text x="112" y="267.73" text-anchor="end">3,000,000</text><text x="112" y="210.76" text-anchor="end">5,000,000</text></g>
@@ -273,119 +409,284 @@
       </svg>
     </section>
 
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Word</th>
-          <th>Rank</th>
-          <th>Count</th>
-          <th>Contexts</th>
-        </tr>
-      </thead>
-      <tbody>
-<tr><td>1</td><td>offenders</td><td>10104</td><td>4976449</td><td>10</td></tr>
-<tr><td>2</td><td>scattered</td><td>10224</td><td>4879386</td><td>10</td></tr>
-<tr><td>3</td><td>profitable</td><td>10437</td><td>4725403</td><td>10</td></tr>
-<tr><td>4</td><td>demon</td><td>10618</td><td>4602331</td><td>10</td></tr>
-<tr><td>5</td><td>executing</td><td>12138</td><td>3703273</td><td>10</td></tr>
-<tr><td>6</td><td>meanings</td><td>12210</td><td>3664177</td><td>10</td></tr>
-<tr><td>7</td><td>crimson</td><td>12536</td><td>3518175</td><td>10</td></tr>
-<tr><td>8</td><td>strangers</td><td>13373</td><td>3180865</td><td>10</td></tr>
-<tr><td>9</td><td>smoked</td><td>13540</td><td>3117683</td><td>10</td></tr>
-<tr><td>10</td><td>shocks</td><td>13662</td><td>3067296</td><td>10</td></tr>
-<tr><td>11</td><td>badges</td><td>13706</td><td>3048651</td><td>10</td></tr>
-<tr><td>12</td><td>averaged</td><td>13767</td><td>3021741</td><td>10</td></tr>
-<tr><td>13</td><td>purity</td><td>13814</td><td>3005735</td><td>10</td></tr>
-<tr><td>14</td><td>brewing</td><td>13896</td><td>2974086</td><td>10</td></tr>
-<tr><td>15</td><td>supposedly</td><td>14095</td><td>2900944</td><td>10</td></tr>
-<tr><td>16</td><td>excludes</td><td>14161</td><td>2880324</td><td>10</td></tr>
-<tr><td>17</td><td>deliberately</td><td>14211</td><td>2862093</td><td>10</td></tr>
-<tr><td>18</td><td>moderately</td><td>14934</td><td>2628951</td><td>10</td></tr>
-<tr><td>19</td><td>disadvantage</td><td>15341</td><td>2504267</td><td>10</td></tr>
-<tr><td>20</td><td>petitions</td><td>15363</td><td>2500009</td><td>10</td></tr>
-<tr><td>21</td><td>horns</td><td>15609</td><td>2427037</td><td>10</td></tr>
-<tr><td>22</td><td>cords</td><td>15803</td><td>2380982</td><td>10</td></tr>
-<tr><td>23</td><td>ovarian</td><td>15885</td><td>2360849</td><td>10</td></tr>
-<tr><td>24</td><td>acknowledges</td><td>16036</td><td>2321868</td><td>10</td></tr>
-<tr><td>25</td><td>exceptionally</td><td>16242</td><td>2272954</td><td>10</td></tr>
-<tr><td>26</td><td>recurrent</td><td>16516</td><td>2214373</td><td>10</td></tr>
-<tr><td>27</td><td>parcels</td><td>16573</td><td>2202732</td><td>10</td></tr>
-<tr><td>28</td><td>appealed</td><td>16941</td><td>2123326</td><td>10</td></tr>
-<tr><td>29</td><td>surveyors</td><td>16943</td><td>2123090</td><td>10</td></tr>
-<tr><td>30</td><td>utter</td><td>17054</td><td>2096533</td><td>10</td></tr>
-<tr><td>31</td><td>lax</td><td>17068</td><td>2093131</td><td>10</td></tr>
-<tr><td>32</td><td>inmate</td><td>17298</td><td>2046395</td><td>10</td></tr>
-<tr><td>33</td><td>discomfort</td><td>17321</td><td>2041894</td><td>10</td></tr>
-<tr><td>34</td><td>practicable</td><td>17595</td><td>1986296</td><td>10</td></tr>
-<tr><td>35</td><td>buggy</td><td>17771</td><td>1955438</td><td>10</td></tr>
-<tr><td>36</td><td>stare</td><td>17937</td><td>1925618</td><td>10</td></tr>
-<tr><td>37</td><td>suction</td><td>18223</td><td>1877189</td><td>10</td></tr>
-<tr><td>38</td><td>multiplied</td><td>18754</td><td>1790425</td><td>10</td></tr>
-<tr><td>39</td><td>occult</td><td>18859</td><td>1769403</td><td>10</td></tr>
-<tr><td>40</td><td>retiring</td><td>19227</td><td>1715699</td><td>10</td></tr>
-<tr><td>41</td><td>tyranny</td><td>19906</td><td>1616527</td><td>10</td></tr>
-<tr><td>42</td><td>jug</td><td>20051</td><td>1596524</td><td>10</td></tr>
-<tr><td>43</td><td>friendships</td><td>21108</td><td>1458801</td><td>10</td></tr>
-<tr><td>44</td><td>tak</td><td>21484</td><td>1414341</td><td>10</td></tr>
-<tr><td>45</td><td>folly</td><td>21891</td><td>1367992</td><td>10</td></tr>
-<tr><td>46</td><td>prosecuted</td><td>22106</td><td>1345345</td><td>10</td></tr>
-<tr><td>47</td><td>denomination</td><td>22154</td><td>1340584</td><td>10</td></tr>
-<tr><td>48</td><td>enumerated</td><td>22308</td><td>1324371</td><td>10</td></tr>
-<tr><td>49</td><td>morphine</td><td>22726</td><td>1283748</td><td>10</td></tr>
-<tr><td>50</td><td>pinned</td><td>22805</td><td>1276850</td><td>10</td></tr>
-<tr><td>51</td><td>dubious</td><td>23071</td><td>1252536</td><td>10</td></tr>
-<tr><td>52</td><td>arrears</td><td>23918</td><td>1177409</td><td>10</td></tr>
-<tr><td>53</td><td>exhaustion</td><td>24740</td><td>1111143</td><td>10</td></tr>
-<tr><td>54</td><td>bedside</td><td>24974</td><td>1092877</td><td>10</td></tr>
-<tr><td>55</td><td>bleak</td><td>25029</td><td>1088632</td><td>10</td></tr>
-<tr><td>56</td><td>undecided</td><td>25269</td><td>1071780</td><td>10</td></tr>
-<tr><td>57</td><td>startling</td><td>25270</td><td>1071701</td><td>10</td></tr>
-<tr><td>58</td><td>halves</td><td>25288</td><td>1070410</td><td>10</td></tr>
-<tr><td>59</td><td>piers</td><td>25427</td><td>1061175</td><td>10</td></tr>
-<tr><td>60</td><td>projecting</td><td>25577</td><td>1049902</td><td>10</td></tr>
-<tr><td>61</td><td>guarding</td><td>26209</td><td>1005862</td><td>10</td></tr>
-<tr><td>62</td><td>circulate</td><td>26691</td><td>975458</td><td>10</td></tr>
-<tr><td>63</td><td>sylvan</td><td>27065</td><td>950229</td><td>10</td></tr>
-<tr><td>64</td><td>reiterated</td><td>27243</td><td>938877</td><td>10</td></tr>
-<tr><td>65</td><td>moaning</td><td>27785</td><td>907347</td><td>10</td></tr>
-<tr><td>66</td><td>pronounce</td><td>28483</td><td>870681</td><td>10</td></tr>
-<tr><td>67</td><td>caprice</td><td>28912</td><td>849643</td><td>10</td></tr>
-<tr><td>68</td><td>dispositions</td><td>29839</td><td>804177</td><td>10</td></tr>
-<tr><td>69</td><td>ascend</td><td>29929</td><td>799236</td><td>10</td></tr>
-<tr><td>70</td><td>doubtless</td><td>30020</td><td>795425</td><td>10</td></tr>
-<tr><td>71</td><td>clutches</td><td>30095</td><td>791875</td><td>10</td></tr>
-<tr><td>72</td><td>dishonesty</td><td>30443</td><td>776567</td><td>10</td></tr>
-<tr><td>73</td><td>guise</td><td>30656</td><td>767344</td><td>10</td></tr>
-<tr><td>74</td><td>triumphant</td><td>31354</td><td>740201</td><td>10</td></tr>
-<tr><td>75</td><td>dormitory</td><td>31439</td><td>736616</td><td>10</td></tr>
-<tr><td>76</td><td>dictation</td><td>32554</td><td>695273</td><td>10</td></tr>
-<tr><td>77</td><td>fillet</td><td>32578</td><td>694345</td><td>10</td></tr>
-<tr><td>78</td><td>robbers</td><td>32695</td><td>689884</td><td>10</td></tr>
-<tr><td>79</td><td>roughness</td><td>33513</td><td>662305</td><td>10</td></tr>
-<tr><td>80</td><td>legions</td><td>33784</td><td>653127</td><td>10</td></tr>
-<tr><td>81</td><td>vulture</td><td>34063</td><td>643760</td><td>10</td></tr>
-<tr><td>82</td><td>feces</td><td>34197</td><td>639441</td><td>10</td></tr>
-<tr><td>83</td><td>manifests</td><td>34319</td><td>635847</td><td>10</td></tr>
-<tr><td>84</td><td>whirl</td><td>34730</td><td>622629</td><td>10</td></tr>
-<tr><td>85</td><td>scourge</td><td>35321</td><td>605240</td><td>10</td></tr>
-<tr><td>86</td><td>intolerable</td><td>35437</td><td>602372</td><td>10</td></tr>
-<tr><td>87</td><td>romances</td><td>35582</td><td>598133</td><td>10</td></tr>
-<tr><td>88</td><td>intimates</td><td>35642</td><td>596202</td><td>10</td></tr>
-<tr><td>89</td><td>apologized</td><td>37027</td><td>559056</td><td>10</td></tr>
-<tr><td>90</td><td>proclaiming</td><td>37125</td><td>556541</td><td>10</td></tr>
-<tr><td>91</td><td>volley</td><td>37393</td><td>550438</td><td>10</td></tr>
-<tr><td>92</td><td>bridle</td><td>37428</td><td>549609</td><td>10</td></tr>
-<tr><td>93</td><td>mattered</td><td>37668</td><td>543236</td><td>10</td></tr>
-<tr><td>94</td><td>murky</td><td>38136</td><td>532036</td><td>10</td></tr>
-<tr><td>95</td><td>embellished</td><td>38237</td><td>529217</td><td>10</td></tr>
-<tr><td>96</td><td>workmen</td><td>38637</td><td>519975</td><td>10</td></tr>
-<tr><td>97</td><td>nodding</td><td>39571</td><td>498441</td><td>10</td></tr>
-<tr><td>98</td><td>unbounded</td><td>39731</td><td>494813</td><td>10</td></tr>
-<tr><td>99</td><td>saddened</td><td>39755</td><td>494456</td><td>10</td></tr>
-<tr><td>100</td><td>precipitated</td><td>39823</td><td>493058</td><td>10</td></tr>
-      </tbody>
-    </table>
+    <section class="table-panel" aria-labelledby="wordTableTitle">
+      <div class="table-toolbar">
+        <label class="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input id="wordSearch" type="search" placeholder="Filter target words…" autocomplete="off" aria-label="Filter target words">
+        </label>
+        <label>
+          <select id="wordSort" aria-label="Sort target words">
+            <option value="rank-asc">Rank: low to high</option>
+            <option value="rank-desc">Rank: high to low</option>
+            <option value="word-asc">Word: A to Z</option>
+            <option value="count-desc">Frequency: high to low</option>
+          </select>
+        </label>
+        <button id="clearFilters" type="button">Reset</button>
+      </div>
+      <div class="table-meta">
+        <strong id="wordTableTitle">Target-word inventory</strong>
+        <span id="resultCount" aria-live="polite">200 words</span>
+      </div>
+      <div class="table-wrap">
+        <table id="wordTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Word</th>
+              <th>Rank</th>
+              <th>Count</th>
+              <th>Contexts</th>
+            </tr>
+          </thead>
+          <tbody>
+<tr data-word="nonfiction" data-rank="10019" data-count="5039708"><td>1</td><td>nonfiction</td><td>10,019</td><td>5,039,708</td><td>50</td></tr>
+<tr data-word="phenomena" data-rank="10146" data-count="4936094"><td>2</td><td>phenomena</td><td>10,146</td><td>4,936,094</td><td>50</td></tr>
+<tr data-word="preschool" data-rank="10167" data-count="4916187"><td>3</td><td>preschool</td><td>10,167</td><td>4,916,187</td><td>50</td></tr>
+<tr data-word="observers" data-rank="10332" data-count="4796192"><td>4</td><td>observers</td><td>10,332</td><td>4,796,192</td><td>50</td></tr>
+<tr data-word="lining" data-rank="10381" data-count="4758401"><td>5</td><td>lining</td><td>10,381</td><td>4,758,401</td><td>50</td></tr>
+<tr data-word="glove" data-rank="10453" data-count="4714578"><td>6</td><td>glove</td><td>10,453</td><td>4,714,578</td><td>50</td></tr>
+<tr data-word="wastewater" data-rank="10455" data-count="4714167"><td>7</td><td>wastewater</td><td>10,455</td><td>4,714,167</td><td>50</td></tr>
+<tr data-word="relaxed" data-rank="10615" data-count="4603097"><td>8</td><td>relaxed</td><td>10,615</td><td>4,603,097</td><td>50</td></tr>
+<tr data-word="adhesive" data-rank="10643" data-count="4585279"><td>9</td><td>adhesive</td><td>10,643</td><td>4,585,279</td><td>50</td></tr>
+<tr data-word="aperture" data-rank="11127" data-count="4266263"><td>10</td><td>aperture</td><td>11,127</td><td>4,266,263</td><td>50</td></tr>
+<tr data-word="intuitive" data-rank="11181" data-count="4241404"><td>11</td><td>intuitive</td><td>11,181</td><td>4,241,404</td><td>50</td></tr>
+<tr data-word="coordinating" data-rank="11191" data-count="4234379"><td>12</td><td>coordinating</td><td>11,191</td><td>4,234,379</td><td>50</td></tr>
+<tr data-word="borrow" data-rank="11358" data-count="4137645"><td>13</td><td>borrow</td><td>11,358</td><td>4,137,645</td><td>50</td></tr>
+<tr data-word="shocked" data-rank="11678" data-count="3948680"><td>14</td><td>shocked</td><td>11,678</td><td>3,948,680</td><td>50</td></tr>
+<tr data-word="diaper" data-rank="11702" data-count="3933145"><td>15</td><td>diaper</td><td>11,702</td><td>3,933,145</td><td>50</td></tr>
+<tr data-word="refuge" data-rank="11736" data-count="3910887"><td>16</td><td>refuge</td><td>11,736</td><td>3,910,887</td><td>50</td></tr>
+<tr data-word="contexts" data-rank="11944" data-count="3804487"><td>17</td><td>contexts</td><td>11,944</td><td>3,804,487</td><td>50</td></tr>
+<tr data-word="rename" data-rank="12029" data-count="3757535"><td>18</td><td>rename</td><td>12,029</td><td>3,757,535</td><td>50</td></tr>
+<tr data-word="petrol" data-rank="12158" data-count="3690703"><td>19</td><td>petrol</td><td>12,158</td><td>3,690,703</td><td>50</td></tr>
+<tr data-word="lever" data-rank="12422" data-count="3566558"><td>20</td><td>lever</td><td>12,422</td><td>3,566,558</td><td>50</td></tr>
+<tr data-word="webs" data-rank="12569" data-count="3501990"><td>21</td><td>webs</td><td>12,569</td><td>3,501,990</td><td>50</td></tr>
+<tr data-word="honours" data-rank="12636" data-count="3471334"><td>22</td><td>honours</td><td>12,636</td><td>3,471,334</td><td>50</td></tr>
+<tr data-word="abundant" data-rank="12717" data-count="3441495"><td>23</td><td>abundant</td><td>12,717</td><td>3,441,495</td><td>50</td></tr>
+<tr data-word="competitor" data-rank="12862" data-count="3378603"><td>24</td><td>competitor</td><td>12,862</td><td>3,378,603</td><td>50</td></tr>
+<tr data-word="encounters" data-rank="12915" data-count="3357331"><td>25</td><td>encounters</td><td>12,915</td><td>3,357,331</td><td>50</td></tr>
+<tr data-word="protests" data-rank="13042" data-count="3303934"><td>26</td><td>protests</td><td>13,042</td><td>3,303,934</td><td>50</td></tr>
+<tr data-word="vaccines" data-rank="13219" data-count="3238310"><td>27</td><td>vaccines</td><td>13,219</td><td>3,238,310</td><td>50</td></tr>
+<tr data-word="turbine" data-rank="13229" data-count="3235102"><td>28</td><td>turbine</td><td>13,229</td><td>3,235,102</td><td>50</td></tr>
+<tr data-word="palms" data-rank="13514" data-count="3127466"><td>29</td><td>palms</td><td>13,514</td><td>3,127,466</td><td>50</td></tr>
+<tr data-word="textures" data-rank="13560" data-count="3108758"><td>30</td><td>textures</td><td>13,560</td><td>3,108,758</td><td>50</td></tr>
+<tr data-word="microscope" data-rank="13698" data-count="3052163"><td>31</td><td>microscope</td><td>13,698</td><td>3,052,163</td><td>50</td></tr>
+<tr data-word="checksum" data-rank="13713" data-count="3046204"><td>32</td><td>checksum</td><td>13,713</td><td>3,046,204</td><td>50</td></tr>
+<tr data-word="worksheet" data-rank="13776" data-count="3019301"><td>33</td><td>worksheet</td><td>13,776</td><td>3,019,301</td><td>50</td></tr>
+<tr data-word="brewing" data-rank="13896" data-count="2974086"><td>34</td><td>brewing</td><td>13,896</td><td>2,974,086</td><td>50</td></tr>
+<tr data-word="autonomy" data-rank="13990" data-count="2937673"><td>35</td><td>autonomy</td><td>13,990</td><td>2,937,673</td><td>50</td></tr>
+<tr data-word="allergic" data-rank="14062" data-count="2913453"><td>36</td><td>allergic</td><td>14,062</td><td>2,913,453</td><td>50</td></tr>
+<tr data-word="addict" data-rank="14072" data-count="2910117"><td>37</td><td>addict</td><td>14,072</td><td>2,910,117</td><td>50</td></tr>
+<tr data-word="juniors" data-rank="14086" data-count="2904014"><td>38</td><td>juniors</td><td>14,086</td><td>2,904,014</td><td>50</td></tr>
+<tr data-word="admits" data-rank="14096" data-count="2899936"><td>39</td><td>admits</td><td>14,096</td><td>2,899,936</td><td>50</td></tr>
+<tr data-word="padding" data-rank="14131" data-count="2890936"><td>40</td><td>padding</td><td>14,131</td><td>2,890,936</td><td>50</td></tr>
+<tr data-word="comprehension" data-rank="14182" data-count="2870530"><td>41</td><td>comprehension</td><td>14,182</td><td>2,870,530</td><td>50</td></tr>
+<tr data-word="flea" data-rank="14392" data-count="2796116"><td>42</td><td>flea</td><td>14,392</td><td>2,796,116</td><td>50</td></tr>
+<tr data-word="karate" data-rank="14617" data-count="2723996"><td>43</td><td>karate</td><td>14,617</td><td>2,723,996</td><td>50</td></tr>
+<tr data-word="ceremonies" data-rank="14652" data-count="2712791"><td>44</td><td>ceremonies</td><td>14,652</td><td>2,712,791</td><td>50</td></tr>
+<tr data-word="invaluable" data-rank="14736" data-count="2682391"><td>45</td><td>invaluable</td><td>14,736</td><td>2,682,391</td><td>50</td></tr>
+<tr data-word="undergo" data-rank="14957" data-count="2620082"><td>46</td><td>undergo</td><td>14,957</td><td>2,620,082</td><td>50</td></tr>
+<tr data-word="mirage" data-rank="15383" data-count="2493561"><td>47</td><td>mirage</td><td>15,383</td><td>2,493,561</td><td>50</td></tr>
+<tr data-word="wrought" data-rank="15949" data-count="2345069"><td>48</td><td>wrought</td><td>15,949</td><td>2,345,069</td><td>50</td></tr>
+<tr data-word="comfortably" data-rank="16082" data-count="2310081"><td>49</td><td>comfortably</td><td>16,082</td><td>2,310,081</td><td>50</td></tr>
+<tr data-word="roadside" data-rank="16139" data-count="2298262"><td>50</td><td>roadside</td><td>16,139</td><td>2,298,262</td><td>50</td></tr>
+<tr data-word="cessation" data-rank="16872" data-count="2137188"><td>51</td><td>cessation</td><td>16,872</td><td>2,137,188</td><td>50</td></tr>
+<tr data-word="psychotherapy" data-rank="16899" data-count="2131314"><td>52</td><td>psychotherapy</td><td>16,899</td><td>2,131,314</td><td>50</td></tr>
+<tr data-word="emblem" data-rank="17091" data-count="2089468"><td>53</td><td>emblem</td><td>17,091</td><td>2,089,468</td><td>50</td></tr>
+<tr data-word="dunes" data-rank="17097" data-count="2088285"><td>54</td><td>dunes</td><td>17,097</td><td>2,088,285</td><td>50</td></tr>
+<tr data-word="praised" data-rank="17239" data-count="2058171"><td>55</td><td>praised</td><td>17,239</td><td>2,058,171</td><td>50</td></tr>
+<tr data-word="horseback" data-rank="17690" data-count="1969441"><td>56</td><td>horseback</td><td>17,690</td><td>1,969,441</td><td>50</td></tr>
+<tr data-word="bullying" data-rank="17807" data-count="1948806"><td>57</td><td>bullying</td><td>17,807</td><td>1,948,806</td><td>50</td></tr>
+<tr data-word="robotic" data-rank="17964" data-count="1921045"><td>58</td><td>robotic</td><td>17,964</td><td>1,921,045</td><td>50</td></tr>
+<tr data-word="crypt" data-rank="18063" data-count="1904607"><td>59</td><td>crypt</td><td>18,063</td><td>1,904,607</td><td>50</td></tr>
+<tr data-word="cubes" data-rank="18162" data-count="1887321"><td>60</td><td>cubes</td><td>18,162</td><td>1,887,321</td><td>50</td></tr>
+<tr data-word="sanity" data-rank="18221" data-count="1877686"><td>61</td><td>sanity</td><td>18,221</td><td>1,877,686</td><td>50</td></tr>
+<tr data-word="forefront" data-rank="18597" data-count="1815372"><td>62</td><td>forefront</td><td>18,597</td><td>1,815,372</td><td>50</td></tr>
+<tr data-word="teal" data-rank="18672" data-count="1803669"><td>63</td><td>teal</td><td>18,672</td><td>1,803,669</td><td>50</td></tr>
+<tr data-word="frontiers" data-rank="18775" data-count="1785820"><td>64</td><td>frontiers</td><td>18,775</td><td>1,785,820</td><td>50</td></tr>
+<tr data-word="drank" data-rank="18821" data-count="1777243"><td>65</td><td>drank</td><td>18,821</td><td>1,777,243</td><td>50</td></tr>
+<tr data-word="watersports" data-rank="18895" data-count="1765286"><td>66</td><td>watersports</td><td>18,895</td><td>1,765,286</td><td>50</td></tr>
+<tr data-word="commute" data-rank="18959" data-count="1754751"><td>67</td><td>commute</td><td>18,959</td><td>1,754,751</td><td>50</td></tr>
+<tr data-word="prognosis" data-rank="19019" data-count="1746165"><td>68</td><td>prognosis</td><td>19,019</td><td>1,746,165</td><td>50</td></tr>
+<tr data-word="determinants" data-rank="19034" data-count="1744062"><td>69</td><td>determinants</td><td>19,034</td><td>1,744,062</td><td>50</td></tr>
+<tr data-word="phishing" data-rank="19206" data-count="1718427"><td>70</td><td>phishing</td><td>19,206</td><td>1,718,427</td><td>50</td></tr>
+<tr data-word="newsfeed" data-rank="19224" data-count="1716299"><td>71</td><td>newsfeed</td><td>19,224</td><td>1,716,299</td><td>50</td></tr>
+<tr data-word="ibn" data-rank="19272" data-count="1710709"><td>72</td><td>ibn</td><td>19,272</td><td>1,710,709</td><td>50</td></tr>
+<tr data-word="overdrive" data-rank="19574" data-count="1664969"><td>73</td><td>overdrive</td><td>19,574</td><td>1,664,969</td><td>50</td></tr>
+<tr data-word="coffin" data-rank="19591" data-count="1662468"><td>74</td><td>coffin</td><td>19,591</td><td>1,662,468</td><td>50</td></tr>
+<tr data-word="moi" data-rank="19720" data-count="1644951"><td>75</td><td>moi</td><td>19,720</td><td>1,644,951</td><td>50</td></tr>
+<tr data-word="ode" data-rank="19721" data-count="1644895"><td>76</td><td>ode</td><td>19,721</td><td>1,644,895</td><td>50</td></tr>
+<tr data-word="conferred" data-rank="19847" data-count="1624719"><td>77</td><td>conferred</td><td>19,847</td><td>1,624,719</td><td>50</td></tr>
+<tr data-word="absorbing" data-rank="19926" data-count="1613367"><td>78</td><td>absorbing</td><td>19,926</td><td>1,613,367</td><td>50</td></tr>
+<tr data-word="wilder" data-rank="19964" data-count="1607947"><td>79</td><td>wilder</td><td>19,964</td><td>1,607,947</td><td>50</td></tr>
+<tr data-word="sultan" data-rank="20280" data-count="1564160"><td>80</td><td>sultan</td><td>20,280</td><td>1,564,160</td><td>50</td></tr>
+<tr data-word="nah" data-rank="20554" data-count="1527428"><td>81</td><td>nah</td><td>20,554</td><td>1,527,428</td><td>50</td></tr>
+<tr data-word="pinot" data-rank="20923" data-count="1481847"><td>82</td><td>pinot</td><td>20,923</td><td>1,481,847</td><td>50</td></tr>
+<tr data-word="deputies" data-rank="20998" data-count="1471758"><td>83</td><td>deputies</td><td>20,998</td><td>1,471,758</td><td>50</td></tr>
+<tr data-word="socioeconomic" data-rank="21225" data-count="1445397"><td>84</td><td>socioeconomic</td><td>21,225</td><td>1,445,397</td><td>50</td></tr>
+<tr data-word="inherit" data-rank="21257" data-count="1440810"><td>85</td><td>inherit</td><td>21,257</td><td>1,440,810</td><td>50</td></tr>
+<tr data-word="surreal" data-rank="21289" data-count="1437237"><td>86</td><td>surreal</td><td>21,289</td><td>1,437,237</td><td>50</td></tr>
+<tr data-word="encrypt" data-rank="21302" data-count="1435748"><td>87</td><td>encrypt</td><td>21,302</td><td>1,435,748</td><td>50</td></tr>
+<tr data-word="constable" data-rank="21318" data-count="1433656"><td>88</td><td>constable</td><td>21,318</td><td>1,433,656</td><td>50</td></tr>
+<tr data-word="phono" data-rank="21441" data-count="1418855"><td>89</td><td>phono</td><td>21,441</td><td>1,418,855</td><td>50</td></tr>
+<tr data-word="bps" data-rank="21643" data-count="1395862"><td>90</td><td>bps</td><td>21,643</td><td>1,395,862</td><td>50</td></tr>
+<tr data-word="renters" data-rank="21838" data-count="1374199"><td>91</td><td>renters</td><td>21,838</td><td>1,374,199</td><td>50</td></tr>
+<tr data-word="radiological" data-rank="22019" data-count="1354035"><td>92</td><td>radiological</td><td>22,019</td><td>1,354,035</td><td>50</td></tr>
+<tr data-word="motorway" data-rank="22030" data-count="1353494"><td>93</td><td>motorway</td><td>22,030</td><td>1,353,494</td><td>50</td></tr>
+<tr data-word="iodine" data-rank="22050" data-count="1351488"><td>94</td><td>iodine</td><td>22,050</td><td>1,351,488</td><td>50</td></tr>
+<tr data-word="decorators" data-rank="22345" data-count="1320345"><td>95</td><td>decorators</td><td>22,345</td><td>1,320,345</td><td>50</td></tr>
+<tr data-word="psoriasis" data-rank="22352" data-count="1319757"><td>96</td><td>psoriasis</td><td>22,352</td><td>1,319,757</td><td>50</td></tr>
+<tr data-word="motorists" data-rank="22526" data-count="1302021"><td>97</td><td>motorists</td><td>22,526</td><td>1,302,021</td><td>50</td></tr>
+<tr data-word="biodiesel" data-rank="22722" data-count="1284181"><td>98</td><td>biodiesel</td><td>22,722</td><td>1,284,181</td><td>50</td></tr>
+<tr data-word="presume" data-rank="22857" data-count="1272666"><td>99</td><td>presume</td><td>22,857</td><td>1,272,666</td><td>50</td></tr>
+<tr data-word="dharma" data-rank="23121" data-count="1247164"><td>100</td><td>dharma</td><td>23,121</td><td>1,247,164</td><td>50</td></tr>
+<tr data-word="calligraphy" data-rank="23210" data-count="1238383"><td>101</td><td>calligraphy</td><td>23,210</td><td>1,238,383</td><td>50</td></tr>
+<tr data-word="starship" data-rank="23323" data-count="1229480"><td>102</td><td>starship</td><td>23,323</td><td>1,229,480</td><td>50</td></tr>
+<tr data-word="livelihood" data-rank="23358" data-count="1226471"><td>103</td><td>livelihood</td><td>23,358</td><td>1,226,471</td><td>50</td></tr>
+<tr data-word="drowned" data-rank="23473" data-count="1217295"><td>104</td><td>drowned</td><td>23,473</td><td>1,217,295</td><td>50</td></tr>
+<tr data-word="sweeps" data-rank="23508" data-count="1213879"><td>105</td><td>sweeps</td><td>23,508</td><td>1,213,879</td><td>50</td></tr>
+<tr data-word="calves" data-rank="23565" data-count="1208012"><td>106</td><td>calves</td><td>23,565</td><td>1,208,012</td><td>50</td></tr>
+<tr data-word="lacy" data-rank="23573" data-count="1207457"><td>107</td><td>lacy</td><td>23,573</td><td>1,207,457</td><td>50</td></tr>
+<tr data-word="walkthroughs" data-rank="23742" data-count="1192778"><td>108</td><td>walkthroughs</td><td>23,742</td><td>1,192,778</td><td>50</td></tr>
+<tr data-word="deliverables" data-rank="24026" data-count="1167801"><td>109</td><td>deliverables</td><td>24,026</td><td>1,167,801</td><td>50</td></tr>
+<tr data-word="inset" data-rank="24086" data-count="1162898"><td>110</td><td>inset</td><td>24,086</td><td>1,162,898</td><td>50</td></tr>
+<tr data-word="whispers" data-rank="24142" data-count="1158619"><td>111</td><td>whispers</td><td>24,142</td><td>1,158,619</td><td>50</td></tr>
+<tr data-word="digitized" data-rank="24337" data-count="1141575"><td>112</td><td>digitized</td><td>24,337</td><td>1,141,575</td><td>50</td></tr>
+<tr data-word="palmetto" data-rank="24668" data-count="1116605"><td>113</td><td>palmetto</td><td>24,668</td><td>1,116,605</td><td>50</td></tr>
+<tr data-word="pleasantly" data-rank="24767" data-count="1108641"><td>114</td><td>pleasantly</td><td>24,767</td><td>1,108,641</td><td>50</td></tr>
+<tr data-word="communicates" data-rank="24788" data-count="1106439"><td>115</td><td>communicates</td><td>24,788</td><td>1,106,439</td><td>50</td></tr>
+<tr data-word="wildfire" data-rank="24965" data-count="1093379"><td>116</td><td>wildfire</td><td>24,965</td><td>1,093,379</td><td>50</td></tr>
+<tr data-word="fruity" data-rank="24990" data-count="1091678"><td>117</td><td>fruity</td><td>24,990</td><td>1,091,678</td><td>50</td></tr>
+<tr data-word="sonnet" data-rank="25111" data-count="1081841"><td>118</td><td>sonnet</td><td>25,111</td><td>1,081,841</td><td>50</td></tr>
+<tr data-word="bong" data-rank="25226" data-count="1074219"><td>119</td><td>bong</td><td>25,226</td><td>1,074,219</td><td>50</td></tr>
+<tr data-word="inadvertently" data-rank="25274" data-count="1071570"><td>120</td><td>inadvertently</td><td>25,274</td><td>1,071,570</td><td>50</td></tr>
+<tr data-word="reacted" data-rank="25375" data-count="1064981"><td>121</td><td>reacted</td><td>25,375</td><td>1,064,981</td><td>50</td></tr>
+<tr data-word="interplay" data-rank="25570" data-count="1050504"><td>122</td><td>interplay</td><td>25,570</td><td>1,050,504</td><td>50</td></tr>
+<tr data-word="azure" data-rank="25682" data-count="1042257"><td>123</td><td>azure</td><td>25,682</td><td>1,042,257</td><td>50</td></tr>
+<tr data-word="pathogenesis" data-rank="25721" data-count="1038707"><td>124</td><td>pathogenesis</td><td>25,721</td><td>1,038,707</td><td>50</td></tr>
+<tr data-word="workbench" data-rank="25759" data-count="1037033"><td>125</td><td>workbench</td><td>25,759</td><td>1,037,033</td><td>50</td></tr>
+<tr data-word="frontage" data-rank="25909" data-count="1027134"><td>126</td><td>frontage</td><td>25,909</td><td>1,027,134</td><td>50</td></tr>
+<tr data-word="marketer" data-rank="26005" data-count="1021263"><td>127</td><td>marketer</td><td>26,005</td><td>1,021,263</td><td>50</td></tr>
+<tr data-word="priori" data-rank="26063" data-count="1016603"><td>128</td><td>priori</td><td>26,063</td><td>1,016,603</td><td>50</td></tr>
+<tr data-word="unison" data-rank="26139" data-count="1010644"><td>129</td><td>unison</td><td>26,139</td><td>1,010,644</td><td>50</td></tr>
+<tr data-word="bassist" data-rank="26352" data-count="995968"><td>130</td><td>bassist</td><td>26,352</td><td>995,968</td><td>50</td></tr>
+<tr data-word="waterfowl" data-rank="26542" data-count="984798"><td>131</td><td>waterfowl</td><td>26,542</td><td>984,798</td><td>50</td></tr>
+<tr data-word="payback" data-rank="26663" data-count="977064"><td>132</td><td>payback</td><td>26,663</td><td>977,064</td><td>50</td></tr>
+<tr data-word="slipper" data-rank="27106" data-count="946965"><td>133</td><td>slipper</td><td>27,106</td><td>946,965</td><td>50</td></tr>
+<tr data-word="governs" data-rank="27153" data-count="944138"><td>134</td><td>governs</td><td>27,153</td><td>944,138</td><td>50</td></tr>
+<tr data-word="extraordinarily" data-rank="27253" data-count="938117"><td>135</td><td>extraordinarily</td><td>27,253</td><td>938,117</td><td>50</td></tr>
+<tr data-word="antagonist" data-rank="27459" data-count="925886"><td>136</td><td>antagonist</td><td>27,459</td><td>925,886</td><td>50</td></tr>
+<tr data-word="cadre" data-rank="27463" data-count="925745"><td>137</td><td>cadre</td><td>27,463</td><td>925,745</td><td>50</td></tr>
+<tr data-word="velour" data-rank="27490" data-count="924178"><td>138</td><td>velour</td><td>27,490</td><td>924,178</td><td>50</td></tr>
+<tr data-word="marketable" data-rank="27623" data-count="916698"><td>139</td><td>marketable</td><td>27,623</td><td>916,698</td><td>50</td></tr>
+<tr data-word="machined" data-rank="27858" data-count="903576"><td>140</td><td>machined</td><td>27,858</td><td>903,576</td><td>50</td></tr>
+<tr data-word="liturgical" data-rank="27888" data-count="901774"><td>141</td><td>liturgical</td><td>27,888</td><td>901,774</td><td>50</td></tr>
+<tr data-word="cyclones" data-rank="28459" data-count="871733"><td>142</td><td>cyclones</td><td>28,459</td><td>871,733</td><td>50</td></tr>
+<tr data-word="lament" data-rank="28523" data-count="868477"><td>143</td><td>lament</td><td>28,523</td><td>868,477</td><td>50</td></tr>
+<tr data-word="terraces" data-rank="28525" data-count="868409"><td>144</td><td>terraces</td><td>28,525</td><td>868,409</td><td>50</td></tr>
+<tr data-word="repo" data-rank="28685" data-count="860967"><td>145</td><td>repo</td><td>28,685</td><td>860,967</td><td>50</td></tr>
+<tr data-word="hassles" data-rank="28814" data-count="854443"><td>146</td><td>hassles</td><td>28,814</td><td>854,443</td><td>50</td></tr>
+<tr data-word="mosques" data-rank="29297" data-count="830923"><td>147</td><td>mosques</td><td>29,297</td><td>830,923</td><td>50</td></tr>
+<tr data-word="distractions" data-rank="29515" data-count="819863"><td>148</td><td>distractions</td><td>29,515</td><td>819,863</td><td>50</td></tr>
+<tr data-word="tentatively" data-rank="29692" data-count="811676"><td>149</td><td>tentatively</td><td>29,692</td><td>811,676</td><td>50</td></tr>
+<tr data-word="conceptions" data-rank="29762" data-count="808213"><td>150</td><td>conceptions</td><td>29,762</td><td>808,213</td><td>50</td></tr>
+<tr data-word="cfg" data-rank="29771" data-count="807901"><td>151</td><td>cfg</td><td>29,771</td><td>807,901</td><td>50</td></tr>
+<tr data-word="vigilance" data-rank="29889" data-count="801669"><td>152</td><td>vigilance</td><td>29,889</td><td>801,669</td><td>50</td></tr>
+<tr data-word="humankind" data-rank="30114" data-count="791114"><td>153</td><td>humankind</td><td>30,114</td><td>791,114</td><td>50</td></tr>
+<tr data-word="forearm" data-rank="30313" data-count="782319"><td>154</td><td>forearm</td><td>30,313</td><td>782,319</td><td>50</td></tr>
+<tr data-word="eerie" data-rank="30535" data-count="772484"><td>155</td><td>eerie</td><td>30,535</td><td>772,484</td><td>50</td></tr>
+<tr data-word="electrochemical" data-rank="30681" data-count="766527"><td>156</td><td>electrochemical</td><td>30,681</td><td>766,527</td><td>50</td></tr>
+<tr data-word="jetty" data-rank="30713" data-count="765224"><td>157</td><td>jetty</td><td>30,713</td><td>765,224</td><td>50</td></tr>
+<tr data-word="ascertained" data-rank="30857" data-count="759738"><td>158</td><td>ascertained</td><td>30,857</td><td>759,738</td><td>50</td></tr>
+<tr data-word="varnish" data-rank="31047" data-count="752945"><td>159</td><td>varnish</td><td>31,047</td><td>752,945</td><td>50</td></tr>
+<tr data-word="refinements" data-rank="31111" data-count="750263"><td>160</td><td>refinements</td><td>31,111</td><td>750,263</td><td>50</td></tr>
+<tr data-word="repost" data-rank="31114" data-count="750029"><td>161</td><td>repost</td><td>31,114</td><td>750,029</td><td>50</td></tr>
+<tr data-word="streaks" data-rank="31550" data-count="731843"><td>162</td><td>streaks</td><td>31,550</td><td>731,843</td><td>50</td></tr>
+<tr data-word="subtracted" data-rank="32269" data-count="705073"><td>163</td><td>subtracted</td><td>32,269</td><td>705,073</td><td>50</td></tr>
+<tr data-word="pathologist" data-rank="32474" data-count="698084"><td>164</td><td>pathologist</td><td>32,474</td><td>698,084</td><td>50</td></tr>
+<tr data-word="irradiated" data-rank="32530" data-count="696038"><td>165</td><td>irradiated</td><td>32,530</td><td>696,038</td><td>50</td></tr>
+<tr data-word="sari" data-rank="32632" data-count="692213"><td>166</td><td>sari</td><td>32,632</td><td>692,213</td><td>50</td></tr>
+<tr data-word="hydrophobic" data-rank="32843" data-count="684750"><td>167</td><td>hydrophobic</td><td>32,843</td><td>684,750</td><td>50</td></tr>
+<tr data-word="prim" data-rank="33359" data-count="666550"><td>168</td><td>prim</td><td>33,359</td><td>666,550</td><td>50</td></tr>
+<tr data-word="feudal" data-rank="33531" data-count="661772"><td>169</td><td>feudal</td><td>33,531</td><td>661,772</td><td>50</td></tr>
+<tr data-word="receptacles" data-rank="34096" data-count="642454"><td>170</td><td>receptacles</td><td>34,096</td><td>642,454</td><td>50</td></tr>
+<tr data-word="socialization" data-rank="34264" data-count="637564"><td>171</td><td>socialization</td><td>34,264</td><td>637,564</td><td>50</td></tr>
+<tr data-word="cosmological" data-rank="34520" data-count="629347"><td>172</td><td>cosmological</td><td>34,520</td><td>629,347</td><td>50</td></tr>
+<tr data-word="compensating" data-rank="34618" data-count="626448"><td>173</td><td>compensating</td><td>34,618</td><td>626,448</td><td>50</td></tr>
+<tr data-word="guestrooms" data-rank="34696" data-count="623988"><td>174</td><td>guestrooms</td><td>34,696</td><td>623,988</td><td>50</td></tr>
+<tr data-word="dendritic" data-rank="35147" data-count="610213"><td>175</td><td>dendritic</td><td>35,147</td><td>610,213</td><td>50</td></tr>
+<tr data-word="unskilled" data-rank="35413" data-count="602968"><td>176</td><td>unskilled</td><td>35,413</td><td>602,968</td><td>50</td></tr>
+<tr data-word="numerator" data-rank="35512" data-count="599807"><td>177</td><td>numerator</td><td>35,512</td><td>599,807</td><td>50</td></tr>
+<tr data-word="biodegradable" data-rank="35892" data-count="589155"><td>178</td><td>biodegradable</td><td>35,892</td><td>589,155</td><td>50</td></tr>
+<tr data-word="lagging" data-rank="36202" data-count="580241"><td>179</td><td>lagging</td><td>36,202</td><td>580,241</td><td>50</td></tr>
+<tr data-word="radii" data-rank="36358" data-count="575939"><td>180</td><td>radii</td><td>36,358</td><td>575,939</td><td>50</td></tr>
+<tr data-word="overflowing" data-rank="36438" data-count="573925"><td>181</td><td>overflowing</td><td>36,438</td><td>573,925</td><td>50</td></tr>
+<tr data-word="croquet" data-rank="36538" data-count="571392"><td>182</td><td>croquet</td><td>36,538</td><td>571,392</td><td>50</td></tr>
+<tr data-word="ceasefire" data-rank="36610" data-count="569390"><td>183</td><td>ceasefire</td><td>36,610</td><td>569,390</td><td>50</td></tr>
+<tr data-word="creatinine" data-rank="36635" data-count="568725"><td>184</td><td>creatinine</td><td>36,635</td><td>568,725</td><td>50</td></tr>
+<tr data-word="landmines" data-rank="37122" data-count="556584"><td>185</td><td>landmines</td><td>37,122</td><td>556,584</td><td>50</td></tr>
+<tr data-word="erections" data-rank="37209" data-count="554572"><td>186</td><td>erections</td><td>37,209</td><td>554,572</td><td>50</td></tr>
+<tr data-word="multifunctional" data-rank="37364" data-count="550923"><td>187</td><td>multifunctional</td><td>37,364</td><td>550,923</td><td>50</td></tr>
+<tr data-word="revamp" data-rank="37429" data-count="549489"><td>188</td><td>revamp</td><td>37,429</td><td>549,489</td><td>50</td></tr>
+<tr data-word="subdomain" data-rank="37616" data-count="544467"><td>189</td><td>subdomain</td><td>37,616</td><td>544,467</td><td>50</td></tr>
+<tr data-word="subspecies" data-rank="37788" data-count="540016"><td>190</td><td>subspecies</td><td>37,788</td><td>540,016</td><td>50</td></tr>
+<tr data-word="nuance" data-rank="37939" data-count="536418"><td>191</td><td>nuance</td><td>37,939</td><td>536,418</td><td>50</td></tr>
+<tr data-word="freer" data-rank="38009" data-count="534734"><td>192</td><td>freer</td><td>38,009</td><td>534,734</td><td>50</td></tr>
+<tr data-word="yanks" data-rank="38150" data-count="531722"><td>193</td><td>yanks</td><td>38,150</td><td>531,722</td><td>50</td></tr>
+<tr data-word="photojournalism" data-rank="38241" data-count="529167"><td>194</td><td>photojournalism</td><td>38,241</td><td>529,167</td><td>50</td></tr>
+<tr data-word="pronoun" data-rank="38652" data-count="519635"><td>195</td><td>pronoun</td><td>38,652</td><td>519,635</td><td>50</td></tr>
+<tr data-word="subtropical" data-rank="39006" data-count="511155"><td>196</td><td>subtropical</td><td>39,006</td><td>511,155</td><td>50</td></tr>
+<tr data-word="unbeaten" data-rank="39592" data-count="497426"><td>197</td><td>unbeaten</td><td>39,592</td><td>497,426</td><td>50</td></tr>
+<tr data-word="aloft" data-rank="39597" data-count="497342"><td>198</td><td>aloft</td><td>39,597</td><td>497,342</td><td>50</td></tr>
+<tr data-word="encased" data-rank="39739" data-count="494670"><td>199</td><td>encased</td><td>39,739</td><td>494,670</td><td>50</td></tr>
+<tr data-word="credentialing" data-rank="39746" data-count="494584"><td>200</td><td>credentialing</td><td>39,746</td><td>494,584</td><td>50</td></tr>
+          </tbody>
+        </table>
+        <div class="no-results" id="noResults" hidden>No target words match that filter.</div>
+      </div>
+    </section>
   </main>
+  <script>
+    const searchInput = document.getElementById("wordSearch");
+    const sortSelect = document.getElementById("wordSort");
+    const tableBody = document.querySelector("#wordTable tbody");
+    const allRows = Array.from(tableBody.rows);
+    const resultCount = document.getElementById("resultCount");
+    const noResults = document.getElementById("noResults");
+
+    function updateTable() {
+      const query = searchInput.value.trim().toLowerCase();
+      const [field, direction] = sortSelect.value.split("-");
+      const ordered = [...allRows].sort((a, b) => {
+        if (field === "word") return a.dataset.word.localeCompare(b.dataset.word);
+        const key = field === "count" ? "count" : "rank";
+        return Number(a.dataset[key]) - Number(b.dataset[key]);
+      });
+      if (direction === "desc") ordered.reverse();
+
+      let visible = 0;
+      ordered.forEach(row => {
+        const matches = !query || row.dataset.word.includes(query);
+        row.hidden = !matches;
+        if (matches) {
+          visible += 1;
+          row.cells[0].textContent = String(visible);
+        }
+        tableBody.append(row);
+      });
+      resultCount.textContent = `${visible} of ${allRows.length} words`;
+      noResults.hidden = visible !== 0;
+    }
+
+    searchInput.addEventListener("input", updateTable);
+    sortSelect.addEventListener("change", updateTable);
+    document.getElementById("clearFilters").addEventListener("click", () => {
+      searchInput.value = "";
+      sortSelect.value = "rank-asc";
+      updateTable();
+      searchInput.focus();
+    });
+  </script>
 </body>
 </html>
