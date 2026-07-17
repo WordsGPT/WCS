@@ -7,12 +7,15 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f7f9;
+      --bg: #edf1f4;
       --panel: #ffffff;
-      --ink: #18212f;
-      --muted: #5c6878;
-      --line: #d9dee7;
-      --accent: #2563eb;
+      --ink: #102536;
+      --muted: #617181;
+      --line: #d7e0e6;
+      --accent: #0f9f8c;
+      --accent-dark: #087467;
+      --navy: #092235;
+      --warm: #f5a451;
     }
     * { box-sizing: border-box; }
     body {
@@ -300,11 +303,6 @@
       stroke-width: 1.5;
       fill: #fff;
     }
-    .default-label {
-      fill: #111827;
-      font-size: 11px;
-      font-weight: 700;
-    }
     .tooltip {
       position: absolute;
       min-width: 220px;
@@ -387,6 +385,139 @@
       margin-top: 10px;
       max-width: 100%;
     }
+    /* FineWeb dashboard treatment */
+    header {
+      padding: 30px max(28px, calc((100vw - 1680px) / 2));
+      border-bottom: 0;
+      background:
+        radial-gradient(circle at 72% -35%, rgba(29, 207, 176, 0.28), transparent 34%),
+        linear-gradient(115deg, #071b2c 0%, #0b2e42 58%, #0d3c4a 100%);
+      color: #fff;
+      gap: 32px;
+      box-shadow: 0 14px 36px rgba(7, 27, 44, 0.16);
+    }
+    header .eyebrow { color: #5de2c9; }
+    header h1 {
+      font-size: clamp(28px, 3.3vw, 42px);
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+    }
+    header .subhead {
+      max-width: 760px;
+      color: #c7d6df;
+      font-size: 15px;
+    }
+    header nav a {
+      padding: 8px 11px;
+      border: 1px solid rgba(216, 255, 247, 0.18);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #d8fff7;
+      font-size: 13px;
+    }
+    header nav a:hover {
+      background: rgba(255, 255, 255, 0.13);
+      color: #fff;
+      text-decoration: none;
+    }
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .hero-stats span {
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.09);
+      color: #e7f4f7;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    main {
+      max-width: 1740px;
+      margin: 0 auto;
+      padding: 24px 28px 40px;
+      grid-template-columns: 310px minmax(0, 1fr);
+      gap: 22px;
+    }
+    aside, section {
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(26, 50, 67, 0.07);
+    }
+    aside {
+      padding: 18px;
+      border-top: 4px solid var(--accent);
+    }
+    section {
+      padding: 22px;
+      border-top: 4px solid var(--navy);
+    }
+    .segmented {
+      background: #eaf0f3;
+      border-radius: 10px;
+    }
+    .segmented button, .metric-select button {
+      border-radius: 8px;
+      padding: 9px 7px;
+    }
+    .segmented button.active, .metric-select button.active {
+      background: var(--navy);
+      color: #fff;
+      box-shadow: 0 5px 12px rgba(9, 34, 53, 0.18);
+      font-weight: 700;
+    }
+    .metric-select button {
+      border: 1px solid transparent;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    .bulk-actions button:hover, .pair-row button:hover {
+      border-color: #8ebcb4;
+      background: #f0faf7;
+    }
+    .pair-row {
+      border-radius: 10px;
+      padding: 9px;
+      background: #f8fafb;
+    }
+    .variant-pill.instruct {
+      border-color: #acd9d1;
+      color: #17685d;
+      background: #eaf9f5;
+    }
+    .chart-head {
+      margin: -2px -2px 8px;
+      padding: 0 2px 16px;
+      border-bottom: 1px solid #e3e9ed;
+    }
+    h2 { font-size: 22px; }
+    .grid { stroke: #e3e9ed; }
+    .series { stroke-width: 2.6; }
+    .default-line {
+      stroke: #7b8994;
+      stroke-width: 1;
+      stroke-dasharray: 4 6;
+      opacity: 0.42;
+    }
+    .default-point {
+      stroke: var(--navy);
+      stroke-width: 2;
+    }
+    .notes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      font-size: 12px;
+    }
+    .notes div {
+      padding: 5px 9px;
+      border: 1px solid #dfe7eb;
+      border-radius: 999px;
+      background: #f7f9fa;
+      white-space: nowrap;
+    }
+    .sample-line { border-top-color: var(--navy); }
     @media (max-width: 900px) {
       main {
         grid-template-columns: 1fr;
@@ -409,6 +540,7 @@
       }
       header {
         display: block;
+        padding: 24px 20px;
       }
       nav {
         justify-content: flex-start;
@@ -423,6 +555,11 @@
       <p class="eyebrow">FineWeb · sample-10BT · forced-path audit</p>
       <h1>FineWeb Word Coverage Score</h1>
       <p class="subhead">Thirteen models on 200 target words × 50 FineWeb contexts at T=1.0. Parameter sweeps extend through top-k 80.</p>
+      <div class="hero-stats" aria-label="Audit summary">
+        <span>13 models</span>
+        <span>10,000 contexts</span>
+        <span>53 settings per model</span>
+      </div>
     </div>
     <nav aria-label="Related WCS views">
       <a href="word_list.html">Target words</a>
@@ -446,9 +583,9 @@
       <div class="control-group">
         <p class="control-title">Metric</p>
         <div class="metric-select" id="metricTabs">
-          <button type="button" data-metric="word_any_wcs" class="active">Words covered in any context</button>
+          <button type="button" data-metric="context_wcs" class="active">Context-level coverage</button>
+          <button type="button" data-metric="word_any_wcs">Words covered in any context</button>
           <button type="button" data-metric="word_all_wcs">Words covered in all contexts</button>
-          <button type="button" data-metric="context_wcs">Context-level coverage</button>
         </div>
       </div>
 
@@ -481,7 +618,7 @@
     <section>
       <div class="chart-head">
         <div>
-          <h2 id="chartTitle">top-p Word Coverage</h2>
+          <h2 id="chartTitle">top-p Target-word context coverage</h2>
           <div class="notes" id="chartNotes"></div>
         </div>
         <div class="chart-meta" id="chartMeta"></div>
@@ -502,7 +639,7 @@
   <script>
     const state = {
       decoder: "top_p",
-      metric: "word_any_wcs",
+      metric: "context_wcs",
       rows: [],
       models: [],
       enabled: new Set()
@@ -564,31 +701,31 @@
         model: "Qwen/Qwen2.5-14B-Instruct",
         decoder: "top_p",
         parameter: 0.8,
-        label: "Qwen2.5-14B-Instruct parameter default: top-p 0.8 (FineWeb curve at T=1.0)"
+        label: "Qwen2.5-14B-Instruct · default p=0.8"
       },
       {
         model: "Qwen/Qwen2.5-14B-Instruct",
         decoder: "top_k",
         parameter: 20,
-        label: "Qwen2.5-14B-Instruct parameter default: top-k 20 (FineWeb curve at T=1.0)"
+        label: "Qwen2.5-14B-Instruct · default k=20"
       },
       {
         model: "meta-llama/Llama-3.1-8B-Instruct",
         decoder: "top_p",
         parameter: 0.9,
-        label: "Llama-3.1-8B-Instruct parameter default: top-p 0.9 (FineWeb curve at T=1.0)"
+        label: "Llama-3.1-8B-Instruct · default p=0.9"
       },
       {
         model: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
         decoder: "top_p",
         parameter: 0.95,
-        label: "DeepSeek parameter recommendation: top-p 0.95 (FineWeb curve at T=1.0)"
+        label: "DeepSeek Distill · recommended p=0.95"
       },
       {
         model: "mistralai/Mistral-7B-Instruct-v0.3",
         decoder: "top_p",
         parameter: 0.9,
-        label: "Mistral Instruct common default: top-p around 0.9"
+        label: "Mistral Instruct · common p≈0.9"
       }
     ];
 
@@ -928,16 +1065,7 @@
         circle.addEventListener("mousemove", event => showTooltip(event, row, marker.label));
         circle.addEventListener("mouseleave", hideTooltip);
         svg.append(circle);
-        text(svg, Math.min(xPos + 8, (svg.clientWidth || 900) - 180), yPos - 8, shortDefaultLabel(marker), "default-label", "start");
       });
-    }
-
-    function shortDefaultLabel(marker) {
-      if (marker.model.includes("Qwen2.5")) return marker.decoder === "top_k" ? "Qwen default k=20" : "Qwen default p=0.8";
-      if (marker.model.includes("Llama")) return "Llama default p=0.9";
-      if (marker.model.includes("DeepSeek")) return "DeepSeek rec p=0.95";
-      if (marker.model.includes("Mistral")) return "Mistral p≈0.9";
-      return "default";
     }
 
     function notesForCurrentChart() {
