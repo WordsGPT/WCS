@@ -33,9 +33,8 @@ echo "[plan] new temperatures=$NEW_TEMPERATURES; reused baseline=T=1.0"
 echo "[plan] models=$MODELS"
 echo "[output] results=$RESULTS_DIR logs=$LOG_DIR"
 
-if [[ -z "${HF_TOKEN:-}" ]]; then
-  echo "[error] HF_TOKEN is required for gated Llama and Gemma checkpoints"
-  exit 2
+if [[ -z "${HF_TOKEN:-}" && -z "${HUGGING_FACE_HUB_TOKEN:-}" ]]; then
+  echo "[note] no Hugging Face token is exported; continuing with the saved login and local model cache"
 fi
 if [[ ! -f "$SAMPLES_PATH" ]]; then
   echo "[error] FineWeb sample file not found at $SAMPLES_PATH"

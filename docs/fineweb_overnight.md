@@ -140,6 +140,7 @@ After the existing 13-model T=1 audit is present on the server, extend it to
 T=0.6, 0.7, and 1.5 with one resumable command:
 
 ```bash
+# Optional when `hf auth login` was already run or the gated models are cached:
 export HF_TOKEN=...
 nohup scripts/run_fineweb_temperature_extension.sh \
   > logs/fineweb_temperature_launcher.log 2>&1 &
