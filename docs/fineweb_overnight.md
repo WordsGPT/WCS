@@ -133,3 +133,25 @@ points are retained as descriptive results.
 
 FineWeb is web-crawl data and may contain residual toxic, biased, or personal
 content despite its filtering. Treat the generated JSONL as research data.
+
+## Extend the 13-model WCS temperature grid
+
+After the existing 13-model T=1 audit is present on the server, extend it to
+T=0.6, 0.7, and 1.5 with one resumable command:
+
+```bash
+export HF_TOKEN=...
+nohup scripts/run_fineweb_temperature_extension.sh \
+  > logs/fineweb_temperature_launcher.log 2>&1 &
+tail -f logs/fineweb_200x50/wcs_temperature_extension/launcher.log
+```
+
+The launcher creates or updates `.venv`, installs the pinned dependencies, runs
+the tests, verifies all existing T=1 audits without rerunning them, and loads
+each of the 13 models once for all three added temperatures. It then rebuilds
+the four-temperature summaries. The added-temperature audits retain the top 64
+probabilities, allowing exact offline summaries of Transformers' sequential
+top-k then top-p provider recipes. The older T=1 audits are reused unchanged;
+their separate top-k/top-p summaries remain available, but they did not retain
+enough probabilities to reconstruct a sequential combined recipe exactly.
+Rerunning the command resumes partial audits and skips completed ones.

@@ -498,6 +498,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--offload-folder", type=Path, default=None, help="Optional folder for unquantized CPU/disk offload.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--temperatures", default=None, help="Comma-separated temperatures for one-pass multi-temperature audits.")
+    parser.add_argument(
+        "--index-only",
+        action="store_true",
+        help=(
+            "Validate and summarize existing multi-temperature audits without "
+            "loading models or running inference. Requires --temperatures."
+        ),
+    )
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument("--rank-neighbors", type=int, default=DEFAULT_RANK_NEIGHBORS)
     parser.add_argument("--limit", type=int, default=None)
@@ -552,6 +560,8 @@ def main() -> int:
     env.setdefault("MPLBACKEND", "Agg")
 
     print(f"[start] {len(models)} models; expected samples per model: {expected_samples}", flush=True)
+    if args.index_only and not args.temperatures:
+        raise SystemExit("--index-only requires --temperatures")
     if args.temperatures:
         temperatures = parse_temperature_list(args.temperatures)
         print(
@@ -562,6 +572,42 @@ def main() -> int:
         completed_by_temperature: dict[float, dict[str, Path]] = {
             temperature: {} for temperature in temperatures
         }
+        if args.index_only:
+            missing: list[str] = []
+            for temperature in temperatures:
+                for model in models:
+                    path = (
+                        args.results_dir
+                        / temperature_slug(temperature)
+                        / f"audit.{model.slug}.jsonl"
+                    )
+                    if audit_is_complete(
+                        path,
+                        expected_samples,
+                        required_top_k=args.top_k,
+                        required_rank_neighbors=args.rank_neighbors,
+                    ):
+                        completed_by_temperature[temperature][model.slug] = path
+                        print(
+                            f"[index] T={temperature:g} {model.slug}: complete",
+                            flush=True,
+                        )
+                    else:
+                        missing.append(f"T={temperature:g}:{model.slug}")
+                        print(
+                            f"[missing] T={temperature:g} {model.slug}: {path}",
+                            flush=True,
+                        )
+            write_temperature_summaries(completed_by_temperature, args)
+            if missing:
+                print(
+                    "[index-failed] incomplete audits: " + ", ".join(missing),
+                    flush=True,
+                )
+                return 1
+            print("[indexed] all requested existing audits are complete.", flush=True)
+            return 0
+
         failures: list[str] = []
         for model in models:
             if STOP_REQUESTED:
