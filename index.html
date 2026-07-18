@@ -115,6 +115,9 @@
       border-radius: 8px;
       margin-bottom: 16px;
     }
+    .segmented.temperature-select {
+      grid-template-columns: repeat(4, 1fr);
+    }
     .bulk-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -554,10 +557,11 @@
     <div>
       <p class="eyebrow">FineWeb · sample-10BT · forced-path audit</p>
       <h1>FineWeb Word Coverage Score</h1>
-      <p class="subhead">Thirteen models on 200 target words × 50 FineWeb contexts at T=1.0. Parameter sweeps extend through top-k 80.</p>
+      <p class="subhead">Thirteen models on 200 target words × 50 FineWeb contexts across four temperatures. Parameter sweeps extend through top-k 80.</p>
       <div class="hero-stats" aria-label="Audit summary">
         <span>13 models</span>
         <span>10,000 contexts</span>
+        <span>4 temperatures</span>
         <span>53 settings per model</span>
       </div>
     </div>
@@ -571,6 +575,16 @@
   </header>
   <main>
     <aside>
+      <div class="control-group">
+        <p class="control-title">Temperature</p>
+        <div class="segmented temperature-select" id="temperatureTabs">
+          <button type="button" data-temperature="0.6">0.6</button>
+          <button type="button" data-temperature="0.7">0.7</button>
+          <button type="button" data-temperature="1.0" class="active">1.0</button>
+          <button type="button" data-temperature="1.5">1.5</button>
+        </div>
+      </div>
+
       <div class="control-group">
         <p class="control-title">Decoder</p>
         <div class="segmented" id="decoderTabs">
@@ -607,7 +621,7 @@
       <div class="model-list" id="modelList"></div>
 
       <div class="default-list">
-        <div><strong>Parameter reference markers</strong>: all plotted FineWeb curves remain evaluated at T=1.0.</div>
+        <div><strong>Parameter reference markers</strong>: curves and markers use the selected temperature.</div>
         <div><strong>Qwen2.5-14B-Instruct</strong>: top-p 0.8, top-k 20</div>
         <div><strong>Llama-3.1-8B-Instruct</strong>: top-p 0.9</div>
         <div><strong>DeepSeek-R1-Distill-Qwen-14B</strong>: top-p 0.95</div>
@@ -638,6 +652,7 @@
 
   <script>
     const state = {
+      temperature: 1.0,
       decoder: "top_p",
       metric: "context_wcs",
       rows: [],
@@ -748,6 +763,7 @@
         const values = splitCsvLine(line);
         const row = {};
         headers.forEach((header, index) => row[header] = values[index] ?? "");
+        row.temperature = Number(row.temperature);
         row.parameter = Number(row.parameter);
         row.word_any_wcs = Number(row.word_any_wcs);
         row.word_all_wcs = Number(row.word_all_wcs);
@@ -898,6 +914,14 @@
       render();
     });
 
+    document.getElementById("temperatureTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-temperature]");
+      if (!button) return;
+      state.temperature = Number(button.dataset.temperature);
+      document.querySelectorAll("#temperatureTabs button").forEach(item => item.classList.toggle("active", item === button));
+      render();
+    });
+
     document.getElementById("metricTabs").addEventListener("click", event => {
       const button = event.target.closest("button[data-metric]");
       if (!button) return;
@@ -953,12 +977,16 @@
       const innerHeight = height - margin.top - margin.bottom;
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-      const rows = state.rows.filter(row => row.decoder === state.decoder && state.enabled.has(row.model));
+      const rows = state.rows.filter(row =>
+        row.temperature === state.temperature &&
+        row.decoder === state.decoder &&
+        state.enabled.has(row.model)
+      );
       const emptyState = document.getElementById("emptyState");
       if (!rows.length) {
         emptyState.hidden = false;
         document.getElementById("chartTitle").textContent = `${decoderLabels[state.decoder]} ${metricLabels[state.metric]}`;
-        document.getElementById("chartMeta").textContent = "0 visible models";
+        document.getElementById("chartMeta").textContent = `T=${formatTemperature(state.temperature)} · 0 visible models`;
         document.getElementById("chartNotes").innerHTML = notesForCurrentChart();
         hideTooltip();
         return;
@@ -984,7 +1012,7 @@
       drawSeries(svg, byModel, x, y);
 
       document.getElementById("chartTitle").textContent = `${decoderLabels[state.decoder]} ${metricLabels[state.metric]}`;
-      document.getElementById("chartMeta").innerHTML = `<strong>${byModel.size}</strong> visible models<br>${rows.length} plotted settings`;
+      document.getElementById("chartMeta").innerHTML = `T=${formatTemperature(state.temperature)} · <strong>${byModel.size}</strong> visible models<br>${rows.length} plotted settings`;
       document.getElementById("chartNotes").innerHTML = notesForCurrentChart();
     }
 
@@ -1032,7 +1060,7 @@
           circle.addEventListener("mousemove", event => showTooltip(event, row));
           circle.addEventListener("mouseleave", hideTooltip);
           const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-          title.textContent = `${displayNames[row.model] || row.model}: ${(row[state.metric] * 100).toFixed(1)}% at ${decoderLabels[row.decoder]} ${formatParameter(row.parameter)}`;
+          title.textContent = `${displayNames[row.model] || row.model}: ${(row[state.metric] * 100).toFixed(1)}% at T=${formatTemperature(row.temperature)}, ${decoderLabels[row.decoder]} ${formatParameter(row.parameter)}`;
           circle.append(title);
           svg.append(circle);
         });
@@ -1079,11 +1107,16 @@
       return value.toFixed(value < 0.1 ? 2 : 2).replace(/0$/, "").replace(/0$/, "");
     }
 
+    function formatTemperature(value) {
+      return Number(value).toFixed(1);
+    }
+
     function showTooltip(event, row, extra) {
       const tooltip = document.getElementById("tooltip");
       const metricValue = row[state.metric];
       tooltip.innerHTML = `
         <strong>${displayNames[row.model] || row.model}</strong>
+        Temperature: ${formatTemperature(row.temperature)}<br>
         ${decoderLabels[row.decoder]}: ${formatParameter(row.parameter)}<br>
         ${metricLabels[state.metric]}: ${(metricValue * 100).toFixed(1)}%<br>
         Words any/all: ${row.covered_words_any}/${row.covered_words_all} of ${row.total_words}<br>
