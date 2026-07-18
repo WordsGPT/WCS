@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FineWeb Word Contexts</title>
+  <meta name="description" content="Browse the 200 FineWeb target words, their 50 source contexts, and the number of models that retain each word under a selected sampler setting.">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #edf1f4;
+      --panel: #fff;
+      --ink: #102536;
+      --muted: #617181;
+      --line: #d7e0e6;
+      --accent: #0f9f8c;
+      --accent-dark: #087467;
+      --navy: #092235;
+      --lost: #c14a3a;
+      --warm: #f5a451;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    header {
+      background:
+        radial-gradient(circle at 72% -35%, rgba(29, 207, 176, .28), transparent 34%),
+        linear-gradient(115deg, #071b2c 0%, #0b2e42 58%, #0d3c4a 100%);
+      color: #fff;
+      display: flex;
+      gap: 30px;
+      justify-content: space-between;
+      padding: 28px max(24px, calc((100vw - 1560px) / 2));
+    }
+    .eyebrow {
+      color: #5de2c9;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      margin: 0 0 6px;
+      text-transform: uppercase;
+    }
+    h1 { font-size: clamp(27px, 3vw, 40px); letter-spacing: -.025em; margin: 0 0 7px; }
+    .subhead { color: #c7d6df; font-size: 14px; line-height: 1.5; margin: 0; max-width: 760px; }
+    nav { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
+    nav a {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(216,255,247,.18);
+      border-radius: 999px;
+      color: #d8fff7;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 12px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    nav a:hover { background: rgba(255,255,255,.13); color: #fff; }
+    .layout {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 286px minmax(0, 1fr);
+      margin: 0 auto;
+      max-width: 1620px;
+      padding: 22px 28px 44px;
+    }
+    aside, .controls, .summary, .context-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      box-shadow: 0 9px 28px rgba(26, 50, 67, .055);
+    }
+    aside {
+      align-self: start;
+      max-height: calc(100vh - 28px);
+      overflow: hidden;
+      position: sticky;
+      top: 14px;
+    }
+    .word-head { border-bottom: 1px solid var(--line); padding: 15px; }
+    .word-head label, .control label {
+      color: var(--muted);
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      margin-bottom: 7px;
+      text-transform: uppercase;
+    }
+    #wordSearch, select {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      min-height: 40px;
+      padding: 0 11px;
+      width: 100%;
+    }
+    #wordSearch:focus, select:focus { border-color: var(--accent); outline: 3px solid rgba(15,159,140,.12); }
+    .word-list { max-height: calc(100vh - 105px); overflow: auto; padding: 8px; }
+    .word-button {
+      align-items: center;
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      color: var(--ink);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      padding: 9px 10px;
+      text-align: left;
+      width: 100%;
+    }
+    .word-button:hover { background: #eef7f5; }
+    .word-button.active { background: var(--navy); color: #fff; }
+    .word-button span { font-size: 13px; font-weight: 700; }
+    .word-button small { color: #85929d; font-size: 10px; }
+    .word-button.active small { color: #b9d5d5; }
+    .main-column { min-width: 0; }
+    .controls {
+      align-items: end;
+      border-top: 4px solid var(--accent);
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1.35fr 1fr 1fr;
+      margin-bottom: 15px;
+      padding: 15px;
+    }
+    .temperature-tabs, .decoder-tabs {
+      background: #eaf0f3;
+      border-radius: 8px;
+      display: grid;
+      gap: 4px;
+      padding: 4px;
+    }
+    .temperature-tabs { grid-template-columns: repeat(4, 1fr); }
+    .decoder-tabs { grid-template-columns: repeat(3, 1fr); }
+    .temperature-tabs button, .decoder-tabs button {
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 8px 6px;
+    }
+    .temperature-tabs button.active, .decoder-tabs button.active {
+      background: var(--navy);
+      box-shadow: 0 4px 10px rgba(9,34,53,.16);
+      color: #fff;
+      font-weight: 750;
+    }
+    .summary {
+      align-items: center;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+      margin-bottom: 15px;
+      padding: 20px;
+    }
+    .summary h2 { font-size: 25px; margin: 0 0 5px; }
+    .summary p { color: var(--muted); font-size: 13px; margin: 0; }
+    .stat { border-left: 1px solid var(--line); min-width: 115px; padding-left: 20px; }
+    .stat strong { display: block; font-size: 22px; line-height: 1.1; }
+    .stat span { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+    .context-list { display: grid; gap: 12px; }
+    .context-card { overflow: hidden; }
+    .context-head {
+      align-items: center;
+      border-bottom: 1px solid #e5eaed;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 11px 16px;
+    }
+    .context-number { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .found-count {
+      background: #e7f7f3;
+      border-radius: 999px;
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+    }
+    .found-count.none { background: #fbe9e6; color: var(--lost); }
+    .found-count.partial { background: #fff2df; color: #9a5a12; }
+    .context-text {
+      color: #263d4b;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 16px;
+      line-height: 1.72;
+      margin: 0;
+      padding: 19px 20px 21px;
+      white-space: pre-wrap;
+    }
+    mark {
+      background: #b9f0e5;
+      border-radius: 4px;
+      color: #063f38;
+      font-family: inherit;
+      font-weight: 700;
+      padding: 2px 5px;
+    }
+    .loading, .error {
+      background: #fff;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      padding: 36px;
+      text-align: center;
+    }
+    @media (max-width: 900px) {
+      header { display: block; }
+      nav { margin-top: 17px; }
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+      aside { max-height: none; position: static; }
+      .word-list { display: flex; gap: 5px; max-height: none; overflow-x: auto; }
+      .word-button { flex: 0 0 auto; width: auto; }
+      .word-button small { margin-left: 9px; }
+      .controls { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: 1fr 1fr 1fr; }
+      .summary > div:first-child { grid-column: 1 / -1; }
+      .stat { border-left: 0; border-top: 1px solid var(--line); min-width: 0; padding: 12px 0 0; }
+    }
+    @media (max-width: 560px) {
+      header { padding: 23px 18px; }
+      .layout { padding: 12px; }
+      .summary { gap: 10px; padding: 16px; }
+      .stat strong { font-size: 17px; }
+      .context-text { font-size: 15px; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">FineWeb · 200 words × 50 contexts</p>
+      <h1>Word Contexts</h1>
+      <p class="subhead">Select a target word to read every accepted FineWeb prefix. Each card reports how many of the 13 models retain the highlighted next word.</p>
+    </div>
+    <nav>
+      <a href="index.html">Main suite</a>
+      <a href="word_list.html">Word list methodology</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div class="word-head">
+        <label for="wordSearch">Target words</label>
+        <input id="wordSearch" type="search" placeholder="Search 200 words…">
+      </div>
+      <div class="word-list" id="wordList"></div>
+    </aside>
+
+    <main class="main-column">
+      <section class="controls" aria-label="Coverage controls">
+        <div class="control">
+          <label>Temperature</label>
+          <div class="temperature-tabs" id="temperatureTabs">
+            <button type="button" data-temperature="0.6">0.6</button>
+            <button type="button" data-temperature="0.7">0.7</button>
+            <button type="button" data-temperature="1" class="active">1.0</button>
+            <button type="button" data-temperature="1.5">1.5</button>
+          </div>
+        </div>
+        <div class="control">
+          <label>Sampler</label>
+          <div class="decoder-tabs" id="decoderTabs">
+            <button type="button" data-decoder="top_p" class="active">top-p</button>
+            <button type="button" data-decoder="top_k">top-k</button>
+            <button type="button" data-decoder="min_p">min-p</button>
+          </div>
+        </div>
+        <div class="control">
+          <label for="parameterSelect">Threshold</label>
+          <select id="parameterSelect"></select>
+        </div>
+      </section>
+
+      <div id="content"><div class="loading">Loading FineWeb words…</div></div>
+    </main>
+  </div>
+
+  <script>
+    const PARAMETERS = {
+      top_k: [...Array(20)].map((_, index) => index + 1).concat([25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]),
+      top_p: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99],
+      min_p: [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    };
+    const DEFAULTS = { top_k: 20, top_p: 0.95, min_p: 0.05 };
+    const state = {
+      index: null,
+      selected: null,
+      wordData: null,
+      query: "",
+      temperature: 1,
+      decoder: "top_p",
+      parameter: 0.95,
+      request: 0
+    };
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderWords() {
+      const list = document.getElementById("wordList");
+      const query = state.query.trim().toLowerCase();
+      const words = state.index.words.filter(item => !query || item.word.toLowerCase().includes(query));
+      list.innerHTML = "";
+      words.forEach(item => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `word-button ${item === state.selected ? "active" : ""}`;
+        button.innerHTML = `<span>${escapeHtml(item.word)}</span><small>#${Number(item.rank).toLocaleString()}</small>`;
+        button.addEventListener("click", () => selectWord(item));
+        list.append(button);
+      });
+    }
+
+    async function selectWord(item) {
+      state.selected = item;
+      state.wordData = null;
+      renderWords();
+      document.getElementById("content").innerHTML = `<div class="loading">Loading 50 contexts for “${escapeHtml(item.word)}”…</div>`;
+      const request = ++state.request;
+      try {
+        const response = await fetch(`fineweb_context_data/${item.file}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (request !== state.request) return;
+        state.wordData = data;
+        renderContent();
+      } catch (error) {
+        if (request !== state.request) return;
+        document.getElementById("content").innerHTML = `<div class="error">Could not load contexts for “${escapeHtml(item.word)}”.</div>`;
+      }
+    }
+
+    function survives(result) {
+      if (!result) return false;
+      if (state.decoder === "top_k") return result[0] <= state.parameter;
+      if (state.decoder === "top_p") return result[1] <= state.parameter + 1e-12;
+      return result[2] >= state.parameter - 1e-12;
+    }
+
+    function modelsFound(context) {
+      const temperatureIndex = state.index.temperatures.indexOf(state.temperature);
+      let found = 0;
+      state.index.models.forEach((_model, modelIndex) => {
+        if (survives(context.results[`${temperatureIndex}:${modelIndex}`])) found += 1;
+      });
+      return found;
+    }
+
+    function conditionLabel() {
+      const name = state.decoder.replace("_", "-");
+      return `T=${state.temperature.toFixed(1)} · ${name} ${state.parameter}`;
+    }
+
+    function renderContent() {
+      if (!state.wordData) return;
+      const counts = state.wordData.contexts.map(modelsFound);
+      const any = counts.filter(count => count > 0).length;
+      const all = counts.filter(count => count === state.index.models.length).length;
+      const average = counts.reduce((sum, count) => sum + count, 0) / counts.length;
+      let html = `
+        <section class="summary">
+          <div>
+            <h2>“${escapeHtml(state.wordData.word)}”</h2>
+            <p>${conditionLabel()} · corpus frequency rank #${Number(state.wordData.rank).toLocaleString()}</p>
+          </div>
+          <div class="stat"><strong>${average.toFixed(1)} / 13</strong><span>Mean models</span></div>
+          <div class="stat"><strong>${any} / 50</strong><span>Found by any</span></div>
+          <div class="stat"><strong>${all} / 50</strong><span>Found by all</span></div>
+        </section>
+        <div class="context-list">
+      `;
+      state.wordData.contexts.forEach((context, index) => {
+        const count = counts[index];
+        const tone = count === 0 ? "none" : count === state.index.models.length ? "" : "partial";
+        const prefix = escapeHtml(context.prefix.replace(/\s+$/, ""));
+        html += `
+          <article class="context-card">
+            <header class="context-head">
+              <span class="context-number">Context ${String(index + 1).padStart(2, "0")}</span>
+              <span class="found-count ${tone}">${count} of 13 models found it</span>
+            </header>
+            <p class="context-text">${prefix} <mark>${escapeHtml(state.wordData.word)}</mark></p>
+          </article>
+        `;
+      });
+      document.getElementById("content").innerHTML = html + "</div>";
+    }
+
+    function setParameterOptions() {
+      const select = document.getElementById("parameterSelect");
+      select.innerHTML = "";
+      PARAMETERS[state.decoder].forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = state.decoder === "top_k" ? `k = ${value}` : `${state.decoder.replace("_", "-")} = ${value}`;
+        select.append(option);
+      });
+      state.parameter = DEFAULTS[state.decoder];
+      select.value = String(state.parameter);
+    }
+
+    document.getElementById("wordSearch").addEventListener("input", event => {
+      state.query = event.target.value;
+      renderWords();
+    });
+    document.getElementById("temperatureTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-temperature]");
+      if (!button) return;
+      state.temperature = Number(button.dataset.temperature);
+      document.querySelectorAll("#temperatureTabs button").forEach(item => item.classList.toggle("active", item === button));
+      renderContent();
+    });
+    document.getElementById("decoderTabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-decoder]");
+      if (!button) return;
+      state.decoder = button.dataset.decoder;
+      document.querySelectorAll("#decoderTabs button").forEach(item => item.classList.toggle("active", item === button));
+      setParameterOptions();
+      renderContent();
+    });
+    document.getElementById("parameterSelect").addEventListener("change", event => {
+      state.parameter = Number(event.target.value);
+      renderContent();
+    });
+
+    setParameterOptions();
+    fetch("fineweb_context_data/index.json")
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        state.index = data;
+        renderWords();
+        if (data.words.length) selectWord(data.words[0]);
+      })
+      .catch(() => {
+        document.getElementById("content").innerHTML = '<div class="error">Could not load the FineWeb context index.</div>';
+      });
+  </script>
+</body>
+</html>
