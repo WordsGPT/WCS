@@ -2,14 +2,17 @@
 
 **Accepted to Findings of EMNLP 2026**
 
-**Paper:** [arXiv:2500.00000](https://arxiv.org/abs/2500.00000) (Placeholder link)
+**Preprint:** [arXiv:2605.27268](https://arxiv.org/abs/2605.27268)
 
 ```bibtex
-@inproceedings{WCS2026,
-  title={Word Coverage Score: Auditing Lexical Reachability in Large Language Models},
-  author={Salama, Samer and Reviriego, Pedro},
-  booktitle={Findings of the Association for Computational Linguistics: EMNLP 2026},
-  year={2026}
+@misc{awad2026lostsamplingassessinglexical,
+  title={Lost in Sampling: Assessing Lexical Reachability in LLMs via the Word Coverage Score (WCS)},
+  author={Samer Awad and Javier Conde and Carlos Arriaga and Tairan Fu and Javier Coronado-Blázquez and Pedro Reviriego},
+  year={2026},
+  eprint={2605.27268},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2605.27268}
 }
 ```
 
