@@ -556,8 +556,8 @@
   <header>
     <div>
       <p class="eyebrow">FineWeb · sample-10BT · forced-path audit</p>
-      <h1>FineWeb Word Coverage Score</h1>
-      <p class="subhead">Thirteen models on 200 target words × 50 FineWeb contexts across four temperatures. Parameter sweeps extend through top-k 80.</p>
+      <h1><a href="https://arxiv.org/abs/2500.00000" style="color: inherit; text-decoration: underline;">Word Coverage Score: Auditing Lexical Reachability in Large Language Models</a></h1>
+      <p class="subhead"><strong>Accepted to Findings of EMNLP 2026.</strong> Thirteen models on 200 target words × 50 FineWeb contexts across four temperatures. Parameter sweeps extend through top-k 80.</p>
       <div class="hero-stats" aria-label="Audit summary">
         <span>13 models</span>
         <span>10,000 contexts</span>
@@ -565,14 +565,19 @@
         <span>53 settings per model</span>
       </div>
     </div>
-    <nav aria-label="Related WCS views">
-      <a href="fineweb_contexts.html">Word contexts</a>
-      <a href="word_list.html">Word methodology</a>
-      <a href="temperature.html">Temperature comparison</a>
-      <a href="mobydick.html">Dataset comparison</a>
-      <a href="lyrics.html">Lyrics comparison</a>
-      <a href="language.html">Language comparison</a>
-    </nav>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+      <nav aria-label="Main WCS views">
+        <a href="fineweb_contexts.html">Word contexts</a>
+        <a href="word_list.html">Word methodology</a>
+        <a href="temperature.html">Temperature comparison</a>
+      </nav>
+      <nav aria-label="Additional experiments" style="opacity: 0.8;">
+        <span style="color: #d8fff7; font-size: 13px; margin-right: 8px;">Additional Experiments:</span>
+        <a href="mobydick.html">Dataset comparison (PG-19)</a>
+        <a href="lyrics.html">Lyrics comparison</a>
+        <a href="language.html">Language comparison (Spanish)</a>
+      </nav>
+    </div>
   </header>
   <main>
     <aside>

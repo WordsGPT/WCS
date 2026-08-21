@@ -1,6 +1,30 @@
 # Word Coverage Score
 
-This repository contains code for the Word Coverage Score (WCS) paper.
+**Accepted to Findings of EMNLP 2026**
+
+**Paper:** [arXiv:2500.00000](https://arxiv.org/abs/2500.00000) (Placeholder link)
+
+```bibtex
+@inproceedings{WCS2026,
+  title={Word Coverage Score: Auditing Lexical Reachability in Large Language Models},
+  author={Salama, Samer and Reviriego, Pedro},
+  booktitle={Findings of the Association for Computational Linguistics: EMNLP 2026},
+  year={2026}
+}
+```
+
+## Overview
+
+This repository contains the code for the Word Coverage Score (WCS) paper. WCS measures how decoding mechanics (like Top-p and Top-k) mathematically prune human vocabulary during generation.
+
+The primary experiments presented in the paper are based on the **FineWeb** corpus. For the end-to-end FineWeb workflow (server setup, fail-fast checks, parallel Gemini validation, WCS audit, open generation, TTR, and MTLD), see [docs/fineweb_overnight.md](docs/fineweb_overnight.md).
+
+---
+
+## Additional Experiments (PG-19 and Spanish Books)
+
+*The instructions below cover supplementary experiments on PG-19 and Spanish public domain books, which are provided as additional resources beyond the main FineWeb results.*
+
 
 The current implementation covers Phase 1 and Phase 3:
 
