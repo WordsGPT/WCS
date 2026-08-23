@@ -423,6 +423,32 @@
       color: #fff;
       text-decoration: none;
     }
+    .header-links {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    .secondary-nav {
+      gap: 5px 8px;
+      opacity: 0.58;
+    }
+    .secondary-nav span {
+      align-self: center;
+      color: #c7d6df;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    header .secondary-nav a {
+      padding: 4px 7px;
+      border-color: rgba(216, 255, 247, 0.1);
+      background: rgba(255, 255, 255, 0.025);
+      color: #c7d6df;
+      font-size: 11px;
+      font-weight: 550;
+    }
     .hero-stats {
       display: flex;
       flex-wrap: wrap;
@@ -549,6 +575,12 @@
         justify-content: flex-start;
         margin-top: 14px;
       }
+      .header-links {
+        align-items: flex-start;
+      }
+      .secondary-nav {
+        margin-top: 0;
+      }
     }
   </style>
 </head>
@@ -565,14 +597,14 @@
         <span>53 settings per model</span>
       </div>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+    <div class="header-links">
       <nav aria-label="Main WCS views">
         <a href="fineweb_contexts.html">Word contexts</a>
         <a href="word_list.html">Word methodology</a>
         <a href="temperature.html">Temperature comparison</a>
       </nav>
-      <nav aria-label="Additional experiments" style="opacity: 0.8;">
-        <span style="color: #d8fff7; font-size: 13px; margin-right: 8px;">Additional Experiments:</span>
+      <nav class="secondary-nav" aria-label="Additional experiments">
+        <span>Additional experiments</span>
         <a href="mobydick.html">Dataset comparison (PG-19)</a>
         <a href="lyrics.html">Lyrics comparison</a>
         <a href="language.html">Language comparison (Spanish)</a>
