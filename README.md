@@ -326,7 +326,7 @@ The runner writes:
   unique target words, including whether each word is covered in at least one
   context.
 
-## FineWeb overnight experiment
+## FineWeb experiment
 
 For the end-to-end FineWeb workflow (server setup, fail-fast checks, parallel
 Gemini validation, k=1..80 WCS, open generation, TTR, and MTLD), see
