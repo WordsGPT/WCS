@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMNLP Poster Comparison: Upscayl vs 300 DPI</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-panel-hover: #334155;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --slider-pos: 50%;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header & Toolbar */
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      background: #0284c7;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-group {
+      display: flex;
+      background: var(--bg-dark);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .select-dropdown {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .select-dropdown:focus {
+      border-color: var(--accent);
+    }
+
+    /* Sub-bar for presets & metadata */
+    .sub-bar {
+      background: #141f36;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .preset-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+
+    .info-labels {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .tag-a { color: #f43f5e; font-weight: 600; }
+    .tag-b { color: #38bdf8; font-weight: 600; }
+
+    /* Viewer Stage */
+    #viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+    }
+
+    #viewport.dragging-canvas {
+      cursor: grabbing;
+    }
+
+    /* Transform container for pan and zoom */
+    #canvas-container {
+      position: absolute;
+      transform-origin: 0 0;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+      background: #fff;
+    }
+
+    /* Poster layers */
+    .poster-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Split Slider Container */
+    #slider-view {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #layer-under {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #layer-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      clip-path: polygon(0 0, var(--slider-pos) 0, var(--slider-pos) 100%, 0 100%);
+    }
+
+    /* Split Divider Line & Handle */
+    #slider-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--slider-pos);
+      width: 2px;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+      pointer-events: auto;
+      cursor: col-resize;
+      z-index: 20;
+    }
+
+    #slider-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid var(--accent);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 10px rgba(56, 189, 248, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: col-resize;
+      backdrop-filter: blur(4px);
+    }
+
+    #slider-handle svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--accent);
+    }
+
+    /* Quick Badges inside Viewer */
+    .view-badge {
+      position: absolute;
+      top: 16px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .badge-left {
+      left: 16px;
+      background: rgba(244, 63, 94, 0.25);
+      border: 1px solid rgba(244, 63, 94, 0.6);
+      color: #fda4af;
+    }
+
+    .badge-right {
+      right: 16px;
+      background: rgba(56, 189, 248, 0.25);
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      color: #bae6fd;
+    }
+
+    /* Side-by-Side View Mode */
+    #side-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #side-view.active {
+      display: flex;
+    }
+
+    .side-pane {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid var(--border-color);
+    }
+
+    /* Opacity Blend Mode */
+    #blend-slider-control {
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Zoom Indicator HUD */
+    .hud-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .hud-btn {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .hud-btn:hover {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
+    .hud-text {
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 50px;
+      text-align: center;
+      color: var(--text-main);
+    }
+
+    /* Keyboard shortcut helper bar */
+    .shortcut-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-color);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 30;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+    }
+
+    kbd {
+      background: #334155;
+      color: #f8fafc;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 10px;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation & Mode Switchers -->
+  <header>
+    <div class="brand">
+      <span class="badge">EMNLP 2026</span>
+      <h1>Poster High-DPI Visual Comparison</h1>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="controls-group">
+      <div class="btn-group">
+        <button id="mode-slider" class="btn active" onclick="setMode('slider')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3v18M6 3v18M12 3v18"/></svg>
+          Split Slider
+        </button>
+        <button id="mode-flicker" class="btn" onclick="setMode('flicker')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+          Quick Flip (<kbd>Space</kbd>)
+        </button>
+        <button id="mode-side" class="btn" onclick="setMode('side')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18" rx="1"/><rect x="13" y="3" width="8" height="18" rx="1"/></svg>
+          Side-by-Side
+        </button>
+        <button id="mode-diff" class="btn" onclick="setMode('diff')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
+          Difference
+        </button>
+      </div>
+
+      <!-- Quality Toggle -->
+      <select id="select-res" class="select-dropdown" onchange="changeResolution(this.value)">
+        <option value="preview">Web Preview (Fast / Smooth 60fps)</option>
+        <option value="full">Original Full Master (Raw PNG, 40-50MB)</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Sub-Bar for Quick Focus Regions & Image Selectors -->
+  <div class="sub-bar">
+    <div class="preset-chips">
+      <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-right: 4px;">Jump to:</span>
+      <button class="preset-btn" onclick="jumpTo('fit')">Reset (Full Poster)</button>
+      <button class="preset-btn" onclick="jumpTo('logo')">Top IPTC Logo</button>
+      <button class="preset-btn" onclick="jumpTo('sec3')">03 Kept & Cutoff Line</button>
+      <button class="preset-btn" onclick="jumpTo('sec4')">04 Equations & Spacing</button>
+      <button class="preset-btn" onclick="jumpTo('footer')">Footer Funding & Logos</button>
+    </div>
+
+    <!-- Active Layers Selector -->
+    <div class="info-labels">
+      <div>
+        <span class="tag-a">Left (A):</span>
+        <select id="select-layer-a" class="select-dropdown" style="padding: 2px 6px; font-size: 11px;" onchange="updateImageLayers()">
+          <option value="emnlp" selected>EMNLP Poster (300 DPI - 9934x14044)</option>
+          <option value="baseline">Baseline Raw 10_words(2)(2) (72 DPI)</option>
+        </select>
+      </div>
+
+      <div>
+        <span class="tag-b">Right (B):</span>
+        <select id="select-layer-b" class="select-dropdown" style="padding: 2px 6px; font-size: 11px;" onchange="updateImageLayers()">
+          <option value="upscayl_art" selected>Upscayl Digital-Art (359 DPI - 11884x16800)</option>
+          <option value="upscayl_std">Upscayl Standard (359 DPI - 11884x16800)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Viewer Stage -->
+  <main id="viewport">
+    
+    <!-- Top Floating Labels -->
+    <div id="badge-left-label" class="view-badge badge-left">Layer A: EMNLP 300 DPI</div>
+    <div id="badge-right-label" class="view-badge badge-right">Layer B: Upscayl (digital-art-4x)</div>
+
+    <!-- Canvas Container (Panned and Zoomed) -->
+    <div id="canvas-container">
+
+      <!-- Split Slider Layout -->
+      <div id="slider-view">
+        <!-- Under Layer (Right / B) -->
+        <div id="layer-under">
+          <img id="img-b" class="poster-img" src="images/upscayl_preview.webp" alt="Right Layer">
+        </div>
+
+        <!-- Over Layer (Left / A, clipped) -->
+        <div id="layer-over">
+          <img id="img-a" class="poster-img" src="images/emnlp_preview.webp" alt="Left Layer">
+        </div>
+
+        <!-- Draggable Divider Line & Handle -->
+        <div id="slider-line">
+          <div id="slider-handle">
+            <svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5V7zm8 0l5 5-5 5V7z"/></svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HUD Controls (Bottom Right) -->
+    <div class="hud-controls">
+      <button class="hud-btn" onclick="zoomChange(-0.25)" title="Zoom Out">−</button>
+      <span id="zoom-text" class="hud-text">100%</span>
+      <button class="hud-btn" onclick="zoomChange(0.25)" title="Zoom In">+</button>
+      <button class="hud-btn" onclick="jumpTo('fit')" title="Reset Fit" style="font-size: 11px; width: auto; padding: 0 6px;">Fit</button>
+      <button class="hud-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    </div>
+
+    <!-- Keyboard Hints (Bottom Left) -->
+    <div class="shortcut-hint">
+      <kbd>Drag</kbd> Pan canvas &bull; 
+      <kbd>Wheel</kbd> Zoom &bull; 
+      <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move slider &bull; 
+      <kbd>Space</kbd> Quick Flip &bull; 
+      <kbd>0</kbd> Reset Fit
+    </div>
+  </main>
+
+  <script>
+    // State variables
+    let currentMode = 'slider'; // 'slider', 'flicker', 'side', 'diff'
+    let sliderPercent = 50.0;
+    let isDraggingSlider = false;
+    let isDraggingCanvas = false;
+    let startX, startY;
+    let panX = 0, panY = 0;
+    let zoom = 1.0;
+    let fitZoom = 1.0;
+    let activeFlicker = 'a';
+    let currentRes = 'preview';
+
+    // Poster aspect ratio (A0 standard: 1980 x 2800)
+    const POSTER_WIDTH = 1980;
+    const POSTER_HEIGHT = 2800;
+
+    // Elements
+    const viewport = document.getElementById('viewport');
+    const container = document.getElementById('canvas-container');
+    const sliderLine = document.getElementById('slider-line');
+    const sliderHandle = document.getElementById('slider-handle');
+    const layerOver = document.getElementById('layer-over');
+    const layerUnder = document.getElementById('layer-under');
+    const imgA = document.getElementById('img-a');
+    const imgB = document.getElementById('img-b');
+    const zoomText = document.getElementById('zoom-text');
+    const badgeLeft = document.getElementById('badge-left-label');
+    const badgeRight = document.getElementById('badge-right-label');
+
+    // Preset configurations (zoom level + center focus percentages)
+    const PRESETS = {
+      fit: { zoomRatio: 1.0, cx: 0.5, cy: 0.5 },
+      logo: { zoomRatio: 2.8, cx: 0.85, cy: 0.05 },
+      sec3: { zoomRatio: 2.4, cx: 0.28, cy: 0.44 },
+      sec4: { zoomRatio: 2.4, cx: 0.28, cy: 0.62 },
+      footer: { zoomRatio: 2.8, cx: 0.50, cy: 0.95 }
+    };
+
+    // Asset paths mapping
+    const ASSETS = {
+      preview: {
+        emnlp: 'images/emnlp_preview.webp',
+        baseline: 'images/baseline_preview.webp',
+        upscayl_art: 'images/upscayl_preview.webp',
+        upscayl_std: 'images/upscayl_preview.webp'
+      },
+      full: {
+        emnlp: 'images/emnlp_high.webp',
+        baseline: 'images/baseline_preview.webp',
+        upscayl_art: 'images/upscayl_high.webp',
+        upscayl_std: 'images/upscayl_high.webp'
+      }
+    };
+
+    function init() {
+      container.style.width = POSTER_WIDTH + 'px';
+      container.style.height = POSTER_HEIGHT + 'px';
+      computeFitZoom();
+      jumpTo('fit');
+      updateSlider();
+
+      window.addEventListener('resize', () => {
+        computeFitZoom();
+        updateTransform();
+      });
+
+      setupEvents();
+    }
+
+    function computeFitZoom() {
+      const vw = viewport.clientWidth - 40;
+      const vh = viewport.clientHeight - 40;
+      const scaleX = vw / POSTER_WIDTH;
+      const scaleY = vh / POSTER_HEIGHT;
+      fitZoom = Math.min(scaleX, scaleY);
+    }
+
+    function setSliderPercent(pct) {
+      sliderPercent = Math.max(0, Math.min(100, pct));
+      updateSlider();
+    }
+
+    function updateSlider() {
+      document.documentElement.style.setProperty('--slider-pos', `${sliderPercent}%`);
+    }
+
+    function updateTransform() {
+      container.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      zoomText.textContent = `${Math.round((zoom / fitZoom) * 100)}%`;
+    }
+
+    function zoomChange(delta) {
+      const newZoom = Math.max(fitZoom * 0.5, Math.min(fitZoom * 8, zoom + delta * fitZoom));
+      // Zoom towards center of viewport
+      const cx = viewport.clientWidth / 2;
+      const cy = viewport.clientHeight / 2;
+      panX = cx - (cx - panX) * (newZoom / zoom);
+      panY = cy - (cy - panY) * (newZoom / zoom);
+      zoom = newZoom;
+      updateTransform();
+    }
+
+    function jumpTo(presetKey) {
+      const p = PRESETS[presetKey];
+      if (!p) return;
+      computeFitZoom();
+      zoom = fitZoom * p.zoomRatio;
+      
+      const targetPosterX = p.cx * POSTER_WIDTH;
+      const targetPosterY = p.cy * POSTER_HEIGHT;
+
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+
+      panX = (vw / 2) - (targetPosterX * zoom);
+      panY = (vh / 2) - (targetPosterY * zoom);
+      updateTransform();
+    }
+
+    // Modes switcher
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('mode-' + mode).classList.add('active');
+
+      // Reset styling defaults
+      layerOver.style.clipPath = '';
+      layerOver.style.opacity = '1';
+      layerOver.style.mixBlendMode = 'normal';
+      sliderLine.style.display = 'none';
+      badgeLeft.style.display = 'block';
+      badgeRight.style.display = 'block';
+
+      if (mode === 'slider') {
+        sliderLine.style.display = 'block';
+        layerOver.style.clipPath = `polygon(0 0, var(--slider-pos) 0, var(--slider-pos) 100%, 0 100%)`;
+      } else if (mode === 'flicker') {
+        sliderLine.style.display = 'none';
+        activeFlicker = 'a';
+        layerOver.style.clipPath = 'polygon(0 0, 100% 0, 100% 100%, 0 100%)';
+        badgeLeft.textContent = 'Active: Layer A (EMNLP)';
+        badgeRight.style.display = 'none';
+      } else if (mode === 'diff') {
+        sliderLine.style.display = 'none';
+        layerOver.style.clipPath = 'polygon(0 0, 100% 0, 100% 100%, 0 100%)';
+        layerOver.style.mixBlendMode = 'difference';
+        badgeLeft.textContent = 'Difference Mode (Identical = Black, Differences = Bright Color)';
+        badgeRight.style.display = 'none';
+      } else if (mode === 'side') {
+        // Toggle side-by-side mode: adjust slider to 50%
+        setSliderPercent(50);
+        sliderLine.style.display = 'block';
+        layerOver.style.clipPath = `polygon(0 0, var(--slider-pos) 0, var(--slider-pos) 100%, 0 100%)`;
+      }
+    }
+
+    function toggleFlicker() {
+      if (currentMode !== 'flicker') {
+        setMode('flicker');
+        return;
+      }
+      if (activeFlicker === 'a') {
+        activeFlicker = 'b';
+        layerOver.style.opacity = '0';
+        badgeLeft.textContent = 'Active: Layer B (Upscayl)';
+        badgeLeft.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+        badgeLeft.style.color = '#bae6fd';
+      } else {
+        activeFlicker = 'a';
+        layerOver.style.opacity = '1';
+        badgeLeft.textContent = 'Active: Layer A (EMNLP)';
+        badgeLeft.style.borderColor = 'rgba(244, 63, 94, 0.6)';
+        badgeLeft.style.color = '#fda4af';
+      }
+    }
+
+    function updateImageLayers() {
+      const valA = document.getElementById('select-layer-a').value;
+      const valB = document.getElementById('select-layer-b').value;
+      imgA.src = ASSETS[currentRes][valA] || ASSETS[currentRes]['emnlp'];
+      imgB.src = ASSETS[currentRes][valB] || ASSETS[currentRes]['upscayl_art'];
+
+      const labelA = document.getElementById('select-layer-a').selectedOptions[0].text;
+      const labelB = document.getElementById('select-layer-b').selectedOptions[0].text;
+      badgeLeft.textContent = 'Layer A: ' + labelA.split('(')[0];
+      badgeRight.textContent = 'Layer B: ' + labelB.split('(')[0];
+    }
+
+    function changeResolution(res) {
+      currentRes = res;
+      updateImageLayers();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    function setupEvents() {
+      // Slider dragging logic
+      const onMove = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        if (isDraggingSlider) {
+          // Calculate slider position relative to canvas-container
+          const rect = container.getBoundingClientRect();
+          const relativeX = clientX - rect.left;
+          const pct = (relativeX / rect.width) * 100;
+          setSliderPercent(pct);
+          return;
+        }
+
+        if (isDraggingCanvas) {
+          panX += clientX - startX;
+          panY += clientY - startY;
+          startX = clientX;
+          startY = clientY;
+          updateTransform();
+        }
+      };
+
+      const onUp = () => {
+        isDraggingSlider = false;
+        isDraggingCanvas = false;
+        viewport.classList.remove('dragging-canvas');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onUp);
+      };
+
+      // Slider handle interaction
+      sliderHandle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isDraggingSlider = true;
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      sliderHandle.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        isDraggingSlider = true;
+        window.addEventListener('touchmove', onMove);
+        window.addEventListener('touchend', onUp);
+      });
+
+      sliderLine.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isDraggingSlider = true;
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      // Viewport Pan
+      viewport.addEventListener('mousedown', (e) => {
+        // If clicking directly on slider line, handled above
+        isDraggingCanvas = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        viewport.classList.add('dragging-canvas');
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDraggingCanvas = true;
+          startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
+          window.addEventListener('touchmove', onMove);
+          window.addEventListener('touchend', onUp);
+        }
+      });
+
+      // Mouse Wheel Zoom
+      viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.2 : -0.2;
+        const rect = viewport.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const newZoom = Math.max(fitZoom * 0.4, Math.min(fitZoom * 12, zoom * (1 + delta)));
+        panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+        panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+        zoom = newZoom;
+        updateTransform();
+      }, { passive: false });
+
+      // Keyboard navigation
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          toggleFlicker();
+        } else if (e.code === 'ArrowLeft') {
+          setSliderPercent(sliderPercent - 2);
+        } else if (e.code === 'ArrowRight') {
+          setSliderPercent(sliderPercent + 2);
+        } else if (e.key === '+' || e.key === '=') {
+          zoomChange(0.25);
+        } else if (e.key === '-' || e.key === '_') {
+          zoomChange(-0.25);
+        } else if (e.key === '0' || e.code === 'Escape') {
+          jumpTo('fit');
+        } else if (e.key.toLowerCase() === 'f') {
+          toggleFullscreen();
+        }
+      });
+    }
+
+    // Launch
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
